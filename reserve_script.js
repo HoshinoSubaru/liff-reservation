@@ -161,7 +161,7 @@ function addCalendarEvent(reservationData) {
   const eventObj = {
     summary: `${reservationData.purpose}：LINE予約：${displayName}さま`,
     description: 
-    `予約者名:${displayName}さま
+  `予約者名:${displayName}さま
   担当者希望: ${reservationData.staff || "未入力"}
   用途: ${reservationData.purpose || "なし"}
   来店回数: ${reservationData.usage || "未入力"}
@@ -221,7 +221,7 @@ function sendLinePushNotification(reservationData, calendarEventId) {
  
   // LINE Messaging API のエンドポイント
   const url = "https://api.line.me/v2/bot/message/push";
-  // チャネルアクセストークン（サーバー側で管理するためクライアントには見せない）
+  // チャネルアクセストークン
   const accessToken = "nyiXxhIRpD5Z8AeLsRp2nHcfYN9PmptLWjJYQPQT/OVA4WGtgbe4krfRG+CUmwnfqw9VzMqpc48n2N84WcQuEV6lgGTLfWqHwkhWrZKxZ9yFevUYDmYpjk2RVHg9xp+ob9vWBer048e/C44FvqqupAdB04t89/1O/w1cDnyilFU="; // セキュアに管理してください
 
   // 送信するメッセージの内容

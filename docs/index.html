@@ -109,12 +109,18 @@
       document.getElementById('pictureUrl').src = profile.pictureUrl;
       document.getElementById('profile').style.display = 'block';
 
-      //alert("move")
-      // 例: リダイレクト先LIFF URL
-      const targetLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB?userId=abc123&mode=edit";
-      alert("chage to liff ")
-      // リダイレクト（画面遷移）
+      // パラメータを動的に付与してLIFF URLにリダイレクト
+      const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
+      const params = new URLSearchParams({
+        userId: profile.userId,
+        name: profile.displayName,
+        mode: "edit"
+      });
+      const targetLiffUrl = `${baseLiffUrl}?${params.toString()}`;
+
+      alert("移動します");
       window.location.href = targetLiffUrl;
+
 
 
       // iframeにGAS URLを設定（パラメータ付き）

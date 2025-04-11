@@ -1,38 +1,96 @@
 /**
+ * スクリプトのプロパティからDB接続情報を取得
+ * @return {Object} 接続情報（DB_CONNECTION, DB_HOST, DB_PORT, DB_DATABASE, DB_USER, DB_PASSWORD）
+ */
+function getDbConfig() {
+  const scriptProps = PropertiesService.getScriptProperties();
+  return {
+    connection: scriptProps.getProperty("DB_CONNECTION"),   // 例: "mysql"
+    host: scriptProps.getProperty("DB_HOST"),               // 例: "35.213.86.XX"
+    port: scriptProps.getProperty("DB_PORT"),               // 例: "3306"
+    database: scriptProps.getProperty("DB_DATABASE"),       // 例: "yourDatabaseName"
+    user: scriptProps.getProperty("DB_USER"),               // 例: "yourUserName"
+    password: scriptProps.getProperty("DB_PASSWORD")        // 例: "yourPassword"
+  };
+}
+
+/**
+ * プロパティから取得した情報をもとに、JDBC接続用のURLを生成して接続を返します
+ * @return {JdbcConnection} MySQL接続オブジェクト
+ */
+function getConnection() {
+  const config = getDbConfig();
+  // 例: "jdbc:mysql://ホスト:ポート/データベース?useSSL=false"
+  const url = `jdbc:${config.connection}://${config.host}:${config.port}/${config.database}?useSSL=false`;
+  return Jdbc.getConnection(url, config.user, config.password);
+}
+
+/**
+ * Google Chat へエラーメッセージを送信する関数
+ * @param {string} errorMessage - 送信するエラーメッセージの内容
+ */
+function sendErrorToGoogleChat(errorMessage) {
+  // Google Chat Incoming Webhook の URL をここに設定してください
+  var webhookUrl = "https://chat.googleapis.com/v1/spaces/AAAAF_b7vzQ/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=s4x1WWqjLiMGkFxGpwCKcYhsjmtqkD2jqTAt8MfI1bY";  
+  var payload = {
+    "text": "【GAS MySQL接続エラー】\n" + errorMessage
+  };
+
+  var options = {
+    "method": "post",
+    "contentType": "application/json",
+    "payload": JSON.stringify(payload)
+  };
+
+  try {
+    var response = UrlFetchApp.fetch(webhookUrl, options);
+    Logger.log("Google Chat 通知レスポンス: " + response.getContentText());
+  } catch (err) {
+    Logger.log("Google Chat への送信エラー: " + err.message);
+  }
+}
+
+/**
  * processLineProfile:
- *  LIFFから取得したプロフィール（displayName, userId 等）を受け取り、
- *  MySQLに対して既存データの存在チェックを行い、必要に応じてINSERTまたはUPDATEします。
+ * LIFFから取得したプロフィール（displayName, userId 等）を受け取り、
+ * MySQLのテーブル「Eoc_line」に対して既存データの存在チェックを行い、
+ * 必要に応じてINSERTまたはUPDATEします。
+ *
+ * ※もし、profile.userId や profile.displayName が "None" または空の場合、
+ *    規定値として userId を "test_hoshino"、displayName を "Hoshinoテスト" に上書きします。
  *
  * @param {Object} profile  LIFFから受け取ったプロフィールオブジェクト（例: { displayName: "...", userId: "..." }）
  * @return {String} 結果メッセージ（任意）
  */
 function processLineProfile(profile) {
-  // MySQL接続情報を設定（適宜変更してください）
-  var dbUrl = 'jdbc:mysql://YOUR_DB_HOST:3306/YOUR_DATABASE?useSSL=false';
-  var dbUser = 'YOUR_DB_USER';
-  var dbPassword = 'YOUR_DB_PASSWORD';
-  var conn;
-
+  // 規定値の設定
+  if (!profile.userId || profile.userId === "None") {
+    profile.userId = "test_hoshino";
+  }
+  if (!profile.displayName || profile.displayName === "None") {
+    profile.displayName = "Hoshinoテスト";
+  }
+  
+  let conn = null;
   try {
-    // MySQLへの接続
-    conn = Jdbc.getConnection(dbUrl, dbUser, dbPassword);
+    // プロパティサービスから取得した接続情報でMySQLに接続
+    conn = getConnection();
     
-    // ① 既存のデータがあるかチェックするためのSELECT文
-    var selectQuery = 'SELECT username FROM yourProfileTable WHERE lineId = ?';
-    var selectStmt = conn.prepareStatement(selectQuery);
+    // 既存のデータがあるかチェックするためのSELECT文（キーは line_id）
+    const selectQuery = 'SELECT line_name FROM Eoc_line WHERE line_id = ?';
+    const selectStmt = conn.prepareStatement(selectQuery);
     selectStmt.setString(1, profile.userId);
-    
-    var results = selectStmt.executeQuery();
+    const results = selectStmt.executeQuery();
     
     if (results.next()) {
-      // 既存データあり → displayNameに変更があるかチェックし、必要ならUPDATE
-      var currentUserName = results.getString('username');
+      // 既存データがある場合 → line_name の変更をチェックし、必要なら UPDATE を実行
+      const currentUserName = results.getString('line_name');
       if (currentUserName !== profile.displayName) {
-        var updateQuery = 'UPDATE yourProfileTable SET username = ? WHERE lineId = ?';
-        var updateStmt = conn.prepareStatement(updateQuery);
+        const updateQuery = 'UPDATE Eoc_line SET line_name = ? WHERE line_id = ?';
+        const updateStmt = conn.prepareStatement(updateQuery);
         updateStmt.setString(1, profile.displayName);
         updateStmt.setString(2, profile.userId);
-        var updateCount = updateStmt.executeUpdate();
+        const updateCount = updateStmt.executeUpdate();
         Logger.log("プロフィール更新件数: " + updateCount);
         updateStmt.close();
       } else {
@@ -40,11 +98,11 @@ function processLineProfile(profile) {
       }
     } else {
       // 既存データなし → INSERTで新規登録
-      var insertQuery = 'INSERT INTO yourProfileTable (lineId, username) VALUES (?, ?)';
-      var insertStmt = conn.prepareStatement(insertQuery);
+      const insertQuery = 'INSERT INTO Eoc_line (line_id, line_name) VALUES (?, ?)';
+      const insertStmt = conn.prepareStatement(insertQuery);
       insertStmt.setString(1, profile.userId);
       insertStmt.setString(2, profile.displayName);
-      var insertCount = insertStmt.executeUpdate();
+      const insertCount = insertStmt.executeUpdate();
       Logger.log("プロフィール新規登録件数: " + insertCount);
       insertStmt.close();
     }
@@ -52,11 +110,13 @@ function processLineProfile(profile) {
     results.close();
     selectStmt.close();
     
-    return "プロフィール処理完了";
+    return "GAS⇒DBプロフィール処理完了";
     
   } catch (e) {
-    Logger.log("プロフィール処理エラー: " + e);
-    throw new Error("プロフィール処理に失敗しました。 " + e.message);
+    Logger.log("GAS⇒DBプロフィール処理エラー: " + e);
+    // エラーが発生した場合、Google Chat にエラー内容を通知する
+    sendErrorToGoogleChat(e.message);
+    throw new Error("GAS⇒DBプロフィール処理に失敗しました。 " + e.message);
     
   } finally {
     if (conn) {

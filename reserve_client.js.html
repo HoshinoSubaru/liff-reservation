@@ -19,7 +19,12 @@ if (window.top === window.self) {
         .then(profile => {
           localStorage.setItem("liffProfile", JSON.stringify(profile));
           console.log("プロフィール情報をローカルストレージに保存:", profile);
-        })
+
+           // サーバー側のprocessLineProfileを呼び出して、MySQLへの登録処理を実行
+        google.script.run.withSuccessHandler(function(result) {
+          console.log("サーバープロフィール処理結果:", result);
+        }).processLineProfile(profile);
+      })
         .catch(err => console.error("LIFF init/profile error:", err));
     }
     initLIFF();

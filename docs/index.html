@@ -65,7 +65,7 @@
 
   <script>
     async function main() {
-      await liff.init({ liffId: "1653447401-q2p5DXw5" }); // ← あなたのLIFF IDに置き換えてね！
+      await liff.init({ liffId: "1653447401-q2p5DXw5" }); // ← あなたのLIFF IDに変更！
 
       if (!liff.isLoggedIn()) {
         liff.login();
@@ -76,20 +76,17 @@
     async function getUserProfile() {
       const profile = await liff.getProfile();
 
-      // プロフィールを表示
+      // プロフィール表示
       document.getElementById('displayName').textContent = profile.displayName;
       document.getElementById('userId').textContent = profile.userId;
       document.getElementById('pictureUrl').src = profile.pictureUrl;
       document.getElementById('profile').style.display = 'block';
 
-      // iframeの表示とURL設定
-      const iframe = document.getElementById("gasFrame");
+      // iframeにGAS URLを設定（パラメータ付き）
       const displayName = encodeURIComponent(profile.displayName);
       const userId = encodeURIComponent(profile.userId);
       const iframe = document.getElementById("gasFrame");
       iframe.src = `https://script.google.com/a/urlounge.co.jp/macros/s/AKfycbzJW7Ow-vyV7VNbWfeLfjSw6w6emVAn2DYH5cpY_RYA9GJzZaSwXq7w-OBd05KSYVywHQ/exec?page=reserve_personal&name=${displayName}&uid=${userId}`;
-
-      //iframe.src = "https://script.google.com/macros/s/AKfycbxPyqX7eWAWAo9aSj3cAYAPHOVSOzuEYz-MNsYnYne6nv1sYxzMA-bSbEOPnyUw2F25/exec";
       iframe.style.display = "block";
     }
 

@@ -18,6 +18,9 @@ if (window.top === window.self) {
         localStorage.setItem("liffProfile", JSON.stringify(profile));
         console.log("プロフィール情報をローカルストレージに保存:", profile);
 
+        _LineID = profile.userId;
+        _name = profile.displayName;
+
         // ここでサーバー側の processLineProfile を呼び出します
         google.script.run
           .withSuccessHandler(function(result) {
@@ -268,8 +271,8 @@ if (window.top === window.self) {
   //最後にリダイレクト
   let baseUrl = "<?= redirectUrl ?>";
   let lineId = "<?= lineId ?>";
-  let name = "<?= name ?>";
-  const nextUrl = baseUrl+"?page=reserve_personal&line_id="+lineId +"&name=" + name;
+  let _name = "<?= _name ?>";
+  const nextUrl = baseUrl+"?page=reserve_personal&line_id=" + lineId + "&name=" + _name;
   window.top.location.href = nextUrl;
 }
 

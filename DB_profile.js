@@ -13,10 +13,10 @@ function test_processLineProfile_cases() {
   processLineProfile({ userId: "test_user_001", displayName: "テスト太郎・更新版" });
 }
 
-function testInsertEocLine(lineid = "test") {
+function testInsertEocLine(line_name = "testDB:SU") {
   const conn = getConnection();
   const stmt = conn.prepareStatement(
-    'INSERT INTO Eoc_line (line_id) VALUES ("'+lineid+'")' // カラム名は実際のテーブルに合わせて
+    'INSERT INTO Eoc_line (line_id) VALUES ("'+line_name+'")' // カラム名は実際のテーブルに合わせて
   );
 
   //stmt.setInt(1, 999);                            // id
@@ -81,25 +81,21 @@ function testQuery() {
  * @param {string} errorMessage - 送信するエラーメッセージの内容
  */
 function sendErrorToGoogleChat(errorMessage) {
-  // Google Chat Incoming Webhook の URL をここに設定してください
-  var webhookUrl = "https://chat.googleapis.com/v1/spaces/AAAAF_b7vzQ/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=s4x1WWqjLiMGkFxGpwCKcYhsjmtqkD2jqTAt8MfI1bY";  
-  var payload = {
-    "text": "【GAS MySQL接続エラー】\n" + errorMessage
-  };
-
-  var options = {
-    "method": "post",
-    "contentType": "application/json",
-    "payload": JSON.stringify(payload)
-  };
-
   try {
-    var response = UrlFetchApp.fetch(webhookUrl, options);
-    Logger.log("Google Chat 通知レスポンス: " + response.getContentText());
-  } catch (err) {
-    Logger.log("Google Chat への送信エラー: " + err.message);
+    sendChatMessage("【GAS MySQL接続エラー】\n" + errorMessage);
+  } catch (e) {
+    Logger.log("Google Chat への送信エラー: " + e.message);
   }
 }
+
+function sendSuccessToGoogleChat(successMessage) {
+  try {
+    sendChatMessage("【GAS MySQL登録成功】\n" + successMessage);
+  } catch (e) {
+    Logger.log("Google Chat への送信エラー: " + e.message);
+  }
+}
+
 
 /**
  * processLineProfile:
@@ -162,6 +158,10 @@ function processLineProfile(profile) {
     results.close();
     selectStmt.close();
     
+    // 成功時にGoogle Chatへ通知（line_idとline_name情報を送信）
+    var successMessage = "DB登録成功\nline_id: " + profile.userId + "\nline_name: " + profile.displayName;
+    sendSuccessToGoogleChat(successMessage);
+
     return "GAS⇒DBプロフィール処理完了";
     
   } catch (e) {

@@ -18,7 +18,81 @@ function doGet(e) {
   Logger.log(JSON.stringify(e))
   const page = e.parameter.page;
 
-   //ここから
+  let lineIdValue = "";
+  let nameValue = "";
+  let modeValue = "";
+
+  // liff.state パラメータがある場合はそちらから解析
+  if (e.parameter["liff.state"]) {
+    const rawState = e.parameter["liff.state"]; // 例: "?userId=...&name=...&mode=..."
+    const decoded = decodeURIComponent(rawState);
+    const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
+    const paramMap = {};
+    query.split("&").forEach(kv => {
+      const [key, value] = kv.split("=");
+      paramMap[key] = decodeURIComponent(value);
+    });
+    lineIdValue = paramMap.userId;
+    nameValue = paramMap.name;
+    modeValue = paramMap.mode;
+  } 
+  // liff.state がない場合、直接 e.parameter から取得
+  else if (e.parameter.line_id) {
+    lineIdValue = e.parameter.line_id;
+    nameValue = e.parameter.name || "";
+    modeValue = e.parameter.mode || "";
+  } else {
+    // パラメータが全く無い場合のフォールバック（必要ならデフォルト値を設定）
+    lineIdValue = "LINE_ID_None";  
+    nameValue = "name_None";
+    modeValue = "mode_None";
+  }
+
+  // グローバル変数に代入
+  _LineID = lineIdValue;
+  _name = nameValue;
+  _mode = modeValue;
+
+  Logger.log("✅ userId: " + _LineID);
+  Logger.log("✅ name: " + _name);
+  Logger.log("✅ mode: " + _mode);
+
+  // DB のテスト登録（受け取った _LineID を使っている例）
+  testInsertEocLine(_LineID);
+  try {
+    sendChatMessage("最初のページ " + _LineID);
+  } catch (e) {
+    Logger.log("sendChatMessage エラー:" + e.message);
+  }
+
+  let tmpl;
+  if (page === 'reserve_personal') {
+    tmpl = HtmlService.createTemplateFromFile("reserve_personal");
+    // 2ページ目は line_id パラメータがあるかもしれないので上書き
+    if (e.parameter.line_id) {
+      _LineID = e.parameter.line_id;
+    }
+    try {
+      sendChatMessage("2ページ目 GAS LINE IDの取得 " + _LineID);
+    } catch (e) {}
+  } else {
+    tmpl = HtmlService.createTemplateFromFile("reserve_date");
+    tmpl.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME);
+    try {
+      sendChatMessage("最初のページ " + _LineID);
+    } catch (e) {}
+  }
+  tmpl.lineId = _LineID;
+  tmpl.name = _name;
+  tmpl.redirectUrl = ScriptApp.getService().getUrl();
+
+  return tmpl.evaluate().setTitle(
+    page === 'reserve_personal' ? "個人情報入力" : "日時選択"
+  );
+}
+
+  /*
+  //ここから
     const rawState = e.parameter['liff.state']; // 例: "?userId=...&name=...&mode=..."
     const decoded = decodeURIComponent(rawState); // 念のためデコード
 
@@ -31,8 +105,8 @@ function doGet(e) {
     });
 
     _LineID = paramMap.userId;
-    name = paramMap.name;
-    mode = paramMap.mode;
+    _name = paramMap.name;
+    _mode = paramMap.mode;
 
     Logger.log("✅ userId: " + _LineID);
     //Logger.log("✅ name: " + name);
@@ -69,6 +143,7 @@ function doGet(e) {
     }
   }
   tmpl.lineId = _LineID;
+  tmpl.name = _name;
   tmpl.redirectUrl = ScriptApp.getService().getUrl()// + "?line_id=" + encodeURIComponent(_LineID) + "&";
 
 
@@ -76,6 +151,7 @@ function doGet(e) {
     page === 'reserve_personal' ? "個人情報入力" : "日時選択"
   );
 }
+*/
 
 /***************************************
  * テンプレート内で
@@ -262,7 +338,7 @@ function sendLinePushNotification(reservationData, calendarEventId) {
   const { /*lineId,*/ time, /*lineName,*/ staff, purpose, usage } = reservationData;
 
   // 送信先: LIFFで取得したユーザーIDを利用
-  const to = "Ucaf9000a9c26b2f3c7183833f554cb2c";
+  const to = _LineID;
   
 // "time" を日付と時間に分割（例："2025-03-25 17:00"）
   const [reservationDate, reservationTime] = time.split(" ");
@@ -281,7 +357,7 @@ function sendLinePushNotification(reservationData, calendarEventId) {
     "📅 ご予約内容\n" +
     "予約日: " + reservationDate + "\n" +
     "時間: " + reservationTime + "\n" +
-    "ご予約者名: " + "Test" + "\n" +
+    "ご予約者名: " + _name + "\n" +
     "用件: " + purpose + "\n" +
     "担当者: " + staff + "\n" +
     "ご利用回数: " + usage + "\n\n" +

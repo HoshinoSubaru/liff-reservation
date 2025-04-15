@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ja">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,10 +13,12 @@
       background-color: #f7f7f7;
       font-size: 18px;
     }
+
     h1 {
       font-size: 24px;
       text-align: center;
     }
+
     button {
       display: block;
       width: 100%;
@@ -28,29 +31,33 @@
       margin-top: 20px;
       cursor: pointer;
     }
+
     #profile {
       margin-top: 30px;
       background: white;
       padding: 20px;
       border-radius: 10px;
       text-align: center;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
     }
+
     img {
       width: 100px;
       height: 100px;
       border-radius: 50%;
       margin-top: 10px;
     }
+
     iframe {
       width: 100%;
       height: 600px;
       border: none;
       margin-top: 30px;
-      display: none; /* 最初は非表示 */
+      display: none;
     }
   </style>
 </head>
+
 <body>
   <h1>LIFFプロフィール</h1>
   <button onclick="getUserProfile()">プロフィール取得</button>
@@ -82,15 +89,20 @@
       document.getElementById('pictureUrl').src = profile.pictureUrl;
       document.getElementById('profile').style.display = 'block';
 
-      // iframeにGAS URLを設定（パラメータ付き）
-      const displayName = encodeURIComponent(profile.displayName);
-      const userId = encodeURIComponent(profile.userId);
-      const iframe = document.getElementById("gasFrame");
-      iframe.src = `https://script.google.com/macros/s/AKfycbyUd6w9u9jzD937lPkvLOOBREhoRqCKn8IDf47f2Px7iXrJN8WoSE8rZTEyodRhv8Sr/exec?page=reserve_personal&name=${displayName}&uid=${userId}`;
-      iframe.style.display = "block";
+      // パラメータを動的に付与してLIFF URLにリダイレクト
+      const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
+      const params = new URLSearchParams({
+        userId: profile.userId,
+        name: profile.displayName,
+        mode: "edit"
+      });
+      const targetLiffUrl = `${baseLiffUrl}?${params.toString()}`;
+
+      window.location.href = targetLiffUrl;
     }
 
     main();
   </script>
 </body>
+
 </html>

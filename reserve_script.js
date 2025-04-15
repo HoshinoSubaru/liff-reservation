@@ -7,6 +7,8 @@ const defaultDate = "2025-03-25";  // テスト用日付
 const defaultTime = "17:00";       // テスト用時間
 
 let _LineID = ""
+let _name = ""
+let _mode = ""
 
 /***************************************
  * ページ振り分け用
@@ -29,13 +31,14 @@ function doGet(e) {
     });
 
     _LineID = paramMap.userId;
-    const name = paramMap.name;
-    const mode = paramMap.mode;
+    name = paramMap.name;
+    mode = paramMap.mode;
 
     Logger.log("✅ userId: " + _LineID);
-    Logger.log("✅ name: " + name);
-    Logger.log("✅ mode: " + mode);
-  
+    //Logger.log("✅ name: " + name);
+    //Logger.log("✅ mode: " + mode);
+    
+    //DB TEST　で実際に現在登録されている
     testInsertEocLine(_LineID)
     //sendChatMessage("GAS LINE IDの取得"+_LineID)
 
@@ -43,6 +46,8 @@ function doGet(e) {
 
   if (page === 'reserve_personal') {
     tmpl = HtmlService.createTemplateFromFile("reserve_personal");
+    //1ページ目からはURLで　line_id=****** でくるので e.parameter
+    //JSONで最初に設定しているので　空になってしまう
     _LineID = e.parameter.line_id
     try{
         sendChatMessage("2ページ目 GAS LINE IDの取得"+_LineID)
@@ -50,6 +55,7 @@ function doGet(e) {
 
     }
   } else {
+    //最初のページは　GITのLINEのProfileのJSONが来るので最初に取得しているのでなにもしない
     //ifrale rediect 許可
     tmpl = HtmlService.createTemplateFromFile("reserve_date");
     tmpl.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME);
@@ -62,7 +68,7 @@ function doGet(e) {
       
     }
   }
-  tmpl.lineId = "_LineID";
+  tmpl.lineId = _LineID;
   tmpl.redirectUrl = ScriptApp.getService().getUrl()// + "?line_id=" + encodeURIComponent(_LineID) + "&";
 
 

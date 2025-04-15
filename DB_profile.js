@@ -1,3 +1,36 @@
+function test_processLineProfile_cases() {
+  sendErrorToGoogleChat("GAS 顧客データテスト")
+  // テスト①: 規定値の代入が働くか
+  res = processLineProfile({ userId: "", displayName: "" });
+  sendErrorToGoogleChat("GAS 顧客データテスト"+res)
+  // テスト②: 新規登録（想定userIdでDBにまだ存在しない）
+  processLineProfile({ userId: "test_user_001", displayName: "テスト太郎" });
+
+  // テスト③: 既に存在するが名前が違う（UPDATE）
+  processLineProfile({ userId: "test_user_001", displayName: "テスト太郎・更新版" });
+
+  // テスト④: 名前もIDも同じ（変更なし）
+  processLineProfile({ userId: "test_user_001", displayName: "テスト太郎・更新版" });
+}
+
+function testInsertEocLine(lineid = "test") {
+  const conn = getConnection();
+  const stmt = conn.prepareStatement(
+    'INSERT INTO Eoc_line (line_id) VALUES ("'+lineid+'")' // カラム名は実際のテーブルに合わせて
+  );
+
+  //stmt.setInt(1, 999);                            // id
+  //stmt.setString(1, 'テストデータ');              // name
+  //stmt.setString(3, '2025-04-14 12:00:00');        // created_at
+
+  stmt.execute();
+  stmt.close();
+  conn.close();
+
+  Logger.log('1件INSERTしました');
+}
+
+
 /**
  * スクリプトのプロパティからDB接続情報を取得
  * @return {Object} 接続情報（DB_CONNECTION, DB_HOST, DB_PORT, DB_DATABASE, DB_USER, DB_PASSWORD）
@@ -22,7 +55,25 @@ function getConnection() {
   const config = getDbConfig();
   // 例: "jdbc:mysql://ホスト:ポート/データベース?useSSL=false"
   const url = `jdbc:${config.connection}://${config.host}:${config.port}/${config.database}?useSSL=false`;
+  Logger.log(url)
+  Logger.log(config.user)
+  Logger.log(config.password)
   return Jdbc.getConnection(url, config.user, config.password);
+}
+
+function testQuery() {
+  const conn = getConnection();
+  const stmt = conn.createStatement();
+  const rs = stmt.executeQuery('SELECT * FROM Eoc_line LIMIT 10');
+
+  while (rs.next()) {
+    Logger.log(rs.getString(1)); // 1列目の値を表示（列名でもOK）
+    //Console.log(rs.getString(1))
+  }
+  
+  rs.close();
+  stmt.close();
+  conn.close();
 }
 
 /**
@@ -75,6 +126,7 @@ function processLineProfile(profile) {
   try {
     // プロパティサービスから取得した接続情報でMySQLに接続
     conn = getConnection();
+    Logger.log(conn)
     
     // 既存のデータがあるかチェックするためのSELECT文（キーは line_id）
     const selectQuery = 'SELECT line_name FROM Eoc_line WHERE line_id = ?';

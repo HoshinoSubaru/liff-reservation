@@ -6,24 +6,65 @@ const CALENDAR_ID = "s.hoshino@urlounge.co.jp";
 const defaultDate = "2025-03-25";  // テスト用日付
 const defaultTime = "17:00";       // テスト用時間
 
+let _LineID = ""
+
 /***************************************
  * ページ振り分け用
  ***************************************/
 function doGet(e) {
   Logger.log("ScriptApp.getService().getUrl(): %s", ScriptApp.getService().getUrl());
-
+  Logger.log(JSON.stringify(e))
   const page = e.parameter.page;
+
+   //ここから
+    const rawState = e.parameter['liff.state']; // 例: "?userId=...&name=...&mode=..."
+    const decoded = decodeURIComponent(rawState); // 念のためデコード
+
+    const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
+
+    const paramMap = {};
+    query.split("&").forEach(kv => {
+      const [key, value] = kv.split("=");
+      paramMap[key] = decodeURIComponent(value);
+    });
+
+    _LineID = paramMap.userId;
+    const name = paramMap.name;
+    const mode = paramMap.mode;
+
+    Logger.log("✅ userId: " + _LineID);
+    Logger.log("✅ name: " + name);
+    Logger.log("✅ mode: " + mode);
+  
+    testInsertEocLine(_LineID)
+    //sendChatMessage("GAS LINE IDの取得"+_LineID)
+
   let tmpl;
 
   if (page === 'reserve_personal') {
     tmpl = HtmlService.createTemplateFromFile("reserve_personal");
+    _LineID = e.parameter.line_id
+    try{
+        sendChatMessage("2ページ目 GAS LINE IDの取得"+_LineID)
+    }catch(e){
+
+    }
   } else {
     //ifrale rediect 許可
     tmpl = HtmlService.createTemplateFromFile("reserve_date");
     tmpl.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME);
-  }
 
-  tmpl.redirectUrl = ScriptApp.getService().getUrl();
+ 
+
+    try{
+        sendChatMessage("最初のページ"+_LineID)
+    }catch(e){
+      
+    }
+  }
+  tmpl.lineId = "_LineID";
+  tmpl.redirectUrl = ScriptApp.getService().getUrl()// + "?line_id=" + encodeURIComponent(_LineID) + "&";
+
 
   return tmpl.evaluate().setTitle(
     page === 'reserve_personal' ? "個人情報入力" : "日時選択"
@@ -36,6 +77,7 @@ function doGet(e) {
  ***************************************/
 function include(filename) {
   const tmpl = HtmlService.createTemplateFromFile(filename);
+  tmpl.lineId = _LineID
   tmpl.redirectUrl = ScriptApp.getService().getUrl();
   return tmpl.evaluate().getContent();
 }

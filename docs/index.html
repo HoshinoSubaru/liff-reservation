@@ -53,7 +53,7 @@
 </head>
 <body>
   <h1>LIFFプロフィール</h1>
-  <button onclick="getUserProfile()">-----プロフィール取得</button>
+  <button onclick="getUserProfile()">プロフィール取得</button>
 
   <div id="profile" style="display:none;">
     <p><strong>名前:</strong> <span id="displayName"></span></p>
@@ -62,23 +62,6 @@
   </div>
 
   <iframe id="gasFrame" src=""></iframe>
-
-  <script>
-    fetch("https://script.google.com/a/macros/urlounge.co.jp/s/AKfycbxlLaRhCftGONHf0ZphHpf61ND7ZUOJFk8Pi8KOsrPO4w4IdhrY8FweOrMF4EQcOq15/exec")
-      .then(response => {
-        if (!response.ok) throw new Error("Network response was not ok");
-        return response.text();
-      })
-      .then(html => {
-        console.log("取得成功！内容:", html);
-        document.body.innerHTML += `<hr><pre>${html}</pre>`;
-      })
-      .catch(error => {
-        console.error("取得失敗:", error);
-      });
-  </script>
-  
-
 
   <script>
     async function main() {
@@ -103,24 +86,7 @@
       const displayName = encodeURIComponent(profile.displayName);
       const userId = encodeURIComponent(profile.userId);
       const iframe = document.getElementById("gasFrame");
-      //iframe.src = `https://script.google.com/macros/s/AKfycbyUd6w9u9jzD937lPkvLOOBREhoRqCKn8IDf47f2Px7iXrJN8WoSE8rZTEyodRhv8Sr/exec?page=reserve_personal&name=${displayName}&uid=${userId}`;
-      alert("test")
-      fetch("https://script.google.com/a/macros/urlounge.co.jp/s/AKfycbxlLaRhCftGONHf0ZphHpf61ND7ZUOJFk8Pi8KOsrPO4w4IdhrY8FweOrMF4EQcOq15/exec")
-      .then(response => {
-        if (!response.ok) throw new Error("Network response was not ok");
-        alert("test")
-        return response.text();
-      })
-      .then(html => {
-        console.log("取得成功！内容:", html);
-        document.body.innerHTML += `<hr><pre>${html}</pre>`;
-      })
-      .catch(error => {
-        console.error("取得失敗:", error);
-      });   
-   
-      iframe.src = `https://script.googleapis.com/v1/scripts/AKfycbxlLaRhCftGONHf0ZphHpf61ND7ZUOJFk8Pi8KOsrPO4w4IdhrY8FweOrMF4EQcOq15:run?page=reserve_personal&name=${displayName}&uid=${userId}`;
-      
+      iframe.src = `https://script.google.com/macros/s/AKfycbyUd6w9u9jzD937lPkvLOOBREhoRqCKn8IDf47f2Px7iXrJN8WoSE8rZTEyodRhv8Sr/exec?page=reserve_personal&name=${displayName}&uid=${userId}`;
       iframe.style.display = "block";
     }
 

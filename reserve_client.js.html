@@ -267,7 +267,8 @@ if (window.top === window.self) {
 
   // ③ 最後にリダイレクト
   let baseUrl = <?= redirectUrl ?>;
-  const nextUrl = baseUrl + "?page=reserve_personal";
+  let lineId = <?= lineId ?>;
+  const nextUrl = baseUrl + "?page=reserve_personal&line_id="+lineId;
   window.top.location.href = nextUrl;
 }
 

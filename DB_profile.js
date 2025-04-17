@@ -13,21 +13,22 @@ function test_processLineProfile_cases() {
   processLineProfile({ userId: "test_user_001", displayName: "テスト太郎・更新版" });
 }
 
-function testInsertEocLine(line_name = "testDB:SU") {
+function testInsertEocLine(line_id = "testDB:SU", line_name = "テストDB:名前") {
   const conn = getConnection();
   const stmt = conn.prepareStatement(
-    'INSERT INTO Eoc_line (line_id) VALUES ("'+line_name+'")' // カラム名は実際のテーブルに合わせて
+    //'INSERT INTO Eoc_line (line_id, line_name) VALUES ("'+line_id+'", "'+line_name+'")' // カラム名は実際のテーブルに合わせて
+      'INSERT INTO Eoc_line (line_id, line_name) VALUES (?,?)' // カラム名は実際のテーブルに合わせて
   );
 
   //stmt.setInt(1, 999);                            // id
-  //stmt.setString(1, 'テストデータ');              // name
-  //stmt.setString(3, '2025-04-14 12:00:00');        // created_at
+  stmt.setString(1, line_id);              // name
+  stmt.setString(2, line_name);        // created_at
 
   stmt.execute();
   stmt.close();
   conn.close();
 
-  Logger.log('1件INSERTしました');
+  Logger.log('1件INSERTしました: ' + line_id + ' / ' + line_name);
 }
 
 
@@ -110,13 +111,20 @@ function sendSuccessToGoogleChat(successMessage) {
  * @return {String} 結果メッセージ（任意）
  */
 function processLineProfile(profile) {
-  // 規定値の設定
-  if (!profile.userId || profile.userId === "None") {
+    Logger.log("Received profile: " + JSON.stringify(profile));
+
+  if (!profile.userId || !profile.displayName) {
+    throw new Error("プロフィール情報が不足しています。userId または displayName が空です。");
+  }
+
+  /*  // 規定値の設定
+    if (!profile.userId || profile.userId === "None") {
     profile.userId = "test_hoshino";
-  }
-  if (!profile.displayName || profile.displayName === "None") {
-    profile.displayName = "Hoshinoテスト";
-  }
+    }
+    if (!profile.displayName || profile.displayName === "None") {
+      profile.displayName = "Hoshinoテスト";
+    }
+  */
   
   let conn = null;
   try {

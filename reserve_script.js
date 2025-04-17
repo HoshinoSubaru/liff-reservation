@@ -16,12 +16,35 @@ let _mode = ""
 function doGet(e) {
   Logger.log("ScriptApp.getService().getUrl(): %s", ScriptApp.getService().getUrl());
   Logger.log(JSON.stringify(e))
+  Logger.log("e.parameter: " + JSON.stringify(e.parameter));
   const page = e.parameter.page;
 
   let lineIdValue = "";
   let nameValue = "";
   let modeValue = "";
 
+if (e.parameter["liff.state"]) {
+  try {
+    const rawState = e.parameter["liff.state"]; // 例: "?userId=...&name=...&mode=..."
+    const decoded = decodeURIComponent(rawState);
+    const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
+    const paramMap = {};
+    query.split("&").forEach(kv => {
+      const [key, value] = kv.split("=");
+      paramMap[key] = decodeURIComponent(value || "");
+    });
+    lineIdValue = paramMap.userId || "LINE_ID_None";
+    nameValue = paramMap.name || "name_None";
+    modeValue = paramMap.mode || "mode_None";
+
+    if (!lineIdValue || !nameValue) {
+      throw new Error("liff.state に必要なパラメータが不足しています。");
+    }
+  } catch (err) {
+    Logger.log("liff.state の解析に失敗しました: " + err.message);
+    throw new Error("liff.state の解析に失敗しました。");
+  }
+} else 
   // liff.state パラメータがある場合はそちらから解析
   if (e.parameter["liff.state"]) {
     const rawState = e.parameter["liff.state"]; // 例: "?userId=...&name=...&mode=..."
@@ -36,6 +59,7 @@ function doGet(e) {
     nameValue = paramMap.name;
     modeValue = paramMap.mode;
   } 
+  /*
   // liff.state がない場合、直接 e.parameter から取得
   else if (e.parameter.line_id) {
     lineIdValue = e.parameter.line_id;
@@ -47,7 +71,8 @@ function doGet(e) {
     nameValue = "name_None";
     modeValue = "mode_None";
   }
-
+    */
+  
   // グローバル変数に代入
   _LineID = lineIdValue;
   _name = nameValue;
@@ -56,7 +81,7 @@ function doGet(e) {
   Logger.log("✅ userId: " + _LineID);
   Logger.log("✅ name: " + _name);
   Logger.log("✅ mode: " + _mode);
-
+  
   // DB のテスト登録（受け取った _LineID を使っている例）
   testInsertEocLine(_LineID);
   try {
@@ -90,68 +115,6 @@ function doGet(e) {
     page === 'reserve_personal' ? "個人情報入力" : "日時選択"
   );
 }
-
-  /*
-  //ここから
-    const rawState = e.parameter['liff.state']; // 例: "?userId=...&name=...&mode=..."
-    const decoded = decodeURIComponent(rawState); // 念のためデコード
-
-    const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
-
-    const paramMap = {};
-    query.split("&").forEach(kv => {
-      const [key, value] = kv.split("=");
-      paramMap[key] = decodeURIComponent(value);
-    });
-
-    _LineID = paramMap.userId;
-    _name = paramMap.name;
-    _mode = paramMap.mode;
-
-    Logger.log("✅ userId: " + _LineID);
-    //Logger.log("✅ name: " + name);
-    //Logger.log("✅ mode: " + mode);
-    
-    //DB TEST　で実際に現在登録されている
-    testInsertEocLine(_LineID)
-    //sendChatMessage("GAS LINE IDの取得"+_LineID)
-
-  let tmpl;
-
-  if (page === 'reserve_personal') {
-    tmpl = HtmlService.createTemplateFromFile("reserve_personal");
-    //1ページ目からはURLで　line_id=****** でくるので e.parameter
-    //JSONで最初に設定しているので　空になってしまう
-    _LineID = e.parameter.line_id
-    try{
-        sendChatMessage("2ページ目 GAS LINE IDの取得"+_LineID)
-    }catch(e){
-
-    }
-  } else {
-    //最初のページは　GITのLINEのProfileのJSONが来るので最初に取得しているのでなにもしない
-    //ifrale rediect 許可
-    tmpl = HtmlService.createTemplateFromFile("reserve_date");
-    tmpl.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME);
-
- 
-
-    try{
-        sendChatMessage("最初のページ"+_LineID)
-    }catch(e){
-      
-    }
-  }
-  tmpl.lineId = _LineID;
-  tmpl.name = _name;
-  tmpl.redirectUrl = ScriptApp.getService().getUrl()// + "?line_id=" + encodeURIComponent(_LineID) + "&";
-
-
-  return tmpl.evaluate().setTitle(
-    page === 'reserve_personal' ? "個人情報入力" : "日時選択"
-  );
-}
-*/
 
 /***************************************
  * テンプレート内で

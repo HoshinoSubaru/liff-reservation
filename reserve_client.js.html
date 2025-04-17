@@ -3,20 +3,23 @@
 
 // 親ページかiframeかを判定する
 if (window.top === window.self) {
-  function initLIFF() {
-    liff.init({ liffId: '1653447401-5bNBkyQB' })
-      .then(() => {
-        if (!liff.isLoggedIn()) {
-          return liff.login({
-            scope: 'profile openid email chat_message.write',
-            redirectUri: 'https://liff.line.me/1653447401-5bNBkyQB'
-          });
-        }
-      })
-      .then(() => liff.getProfile())
-      .then(profile => {
-        localStorage.setItem("liffProfile", JSON.stringify(profile));
-        console.log("プロフィール情報をローカルストレージに保存:", profile);
+  // ----- 親ページの処理 -----
+
+async function initLIFF() {
+  try {
+    await liff.init({ liffId: '1653447401-5bNBkyQB' });
+
+    if (!liff.isLoggedIn()) {
+      liff.login({
+        scope: 'profile openid email chat_message.write',
+        redirectUri: 'https://liff.line.me/1653447401-5bNBkyQB'
+      });
+      return;
+    }
+
+    const profile = await liff.getProfile();
+    console.log("プロフィール情報をローカルストレージに保存:", profile);
+    localStorage.setItem("liffProfile", JSON.stringify(profile));
 
         _LineID = profile.userId;
         _name = profile.displayName;
@@ -30,10 +33,11 @@ if (window.top === window.self) {
             console.error("サーバーエラー:", err);
           })
           .processLineProfile(profile);
-      })
-      .catch(err => console.error("LIFF init/profile error:", err));
+        } catch (err) {
+    console.error("LIFF init/profile error:", err);
   }
-  initLIFF();
+}
+initLIFF();
 
   // 子ページ（iframe）からプロフィール要求が来たら返答する
     window.addEventListener("message", event => {

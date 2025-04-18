@@ -3,33 +3,30 @@
 
 // 親ページかiframeかを判定する
 if (window.top === window.self) {
-    // ----- 親ページの処理 -----
-    function initLIFF() {
-      liff.init({ liffId: '1653447401-5bNBkyQB' })
-        .then(() => {
-          if (!liff.isLoggedIn()) {
-            return liff.login({
-              scope: 'profile openid email chat_message.write',
-              // ------ LIFFのリダイレクトURLを location.hrefから変更 ------ //
-              redirectUri: 'https://liff.line.me/1653447401-5bNBkyQB'
-            });
-          }
-        })
-        .then(() => liff.getProfile())
-        .then(profile => {
-          localStorage.setItem("liffProfile", JSON.stringify(profile));
-          console.log("プロフィール情報をローカルストレージに保存:", profile);
+  // ----- 親ページの処理 -----
 
-           // サーバー側のprocessLineProfileを呼び出して、MySQLへの登録処理を実行
-        google.script.run.withSuccessHandler(function(result) {
-          console.log("サーバープロフィール処理結果:", result);
-        }).processLineProfile(profile);
-      })
-        .catch(err => console.error("LIFF init/profile error:", err));
-    }
-    initLIFF();
+async function initLIFF() {
+   _LineID = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
+   lineid = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
+   
+   _name = "<?= name ?>"; // サーバーから渡された名前
+  const redirectUrl = "<?= redirectUrl ?>"; // サーバーから渡されたリダイレクトURL
+  
+  profile = { userId: _LineID, displayName: _name }
 
-    // 子ページ（iframe）からプロフィール要求が来たら返答する
+   // ここでサーバー側の processLineProfile を呼び出します
+    google.script.run
+          .withSuccessHandler(function(result) {
+            console.log("サーバープロフィール処理結果:", result);
+          })
+          .withFailureHandler(function(err) {
+            console.error("サーバーエラー:", err);
+          })
+          .processLineProfile(lineid,name); //profile);
+        }
+
+
+  // 子ページ（iframe）からプロフィール要求が来たら返答する
     window.addEventListener("message", event => {
       if (event.data && event.data.requestProfile) {
         const raw = localStorage.getItem("liffProfile") || "{}";
@@ -229,7 +226,11 @@ if (window.top === window.self) {
   /**
    * 「次へ進む」ボタン押下時の処理（個人情報入力ページへ遷移）
    */
-   function submitReservation() {
+function submitReservation() {
+   _LineID = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
+   lineid = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
+   
+   _name = "<?= name ?>"; // サーバーから渡された名前
   console.log("submitReservation called");
 
   // 日付が選択されているかチェック
@@ -256,18 +257,19 @@ if (window.top === window.self) {
   // メッセージ組み立て＆送信
   const message =
     "LIFFアプリ:redirect時:profile 処理開始\n" +
-    "LINE名: " + (profile.displayName || "") + "\n" +
-    "LINEID: " + (profile.userId || "") + "\n" +
+    "LINE名: " + (_name || "") + "\n" +
+    "LINEID: " + (_LineID || "") + "\n" +
     "選択日時: " + selectedText;
   google.script.run.sendChatMessage(message);
   console.log("sendChatMessage called with:", message);
 
-  // ③ 最後にリダイレクト
-  let baseUrl = <?= redirectUrl ?>;
-  const nextUrl = baseUrl + "?page=reserve_personal";
+  //最後にリダイレクト
+  let baseUrl = "<?= redirectUrl ?>";
+  let lineId = "<?= lineid ?>";
+  let name = "<?= _name ?>";
+  const nextUrl = baseUrl+ "?page=reserve_personal&line_id=" + lineId + "&name=" + name;
   window.top.location.href = nextUrl;
 }
-
 
   /**
    *  ボタンクリックで hidden に値をセットし、選択中のボタンをハイライト
@@ -298,10 +300,14 @@ if (window.top === window.self) {
 
       // localStorageからプロフィール情報を取得
     let profile = localStorage.getItem("liffProfile");
+
+  let lineId = "<?= _LineID ?>";
+  let name = "<?= _name ?>";
+
     if (profile) {
       profile = JSON.parse(profile);
     } else {
-      profile = { displayName: "None", userId: "None" };
+      profile = { displayName: name, userId: lineId };
     }
 
     let message = "LIFFアプリ:予約登録時:profile 処理開始\n" +

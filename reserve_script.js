@@ -19,9 +19,10 @@ function doGet(e) {
   Logger.log("e.parameter: " + JSON.stringify(e.parameter));
   const page = e.parameter.page;
 
-  let lineId = "";
-  let name = "";
-  let mode = "";
+  // ローカル変数は削除
+  // let userId = "";
+  // let name = "";
+  // let mode = "";
 
 if (e.parameter["liff.state"]) {
   try {
@@ -104,7 +105,7 @@ if (e.parameter["liff.state"]) {
     //reserve_dateの表示
     
     tmpl = HtmlService.createTemplateFromFile("reserve_date");
-    tmpl.lineid = _LineID
+    tmpl.lineId = _LineID
     tmpl.name = _name
     tmpl.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME);
     try {
@@ -113,8 +114,8 @@ if (e.parameter["liff.state"]) {
   }
   
   tmpl.redirectUrl = ScriptApp.getService().getUrl(); // リダイレクトURL
-  tmpl._LineId = _LineID || "lineid_none"//e.parameter.line_id || "LINE_ID_None"; // LINE ID
-  tmpl._name = _name || "name_None"; // 名前
+  tmpl.lineId = _LineID || "lineId_none"//e.parameter.line_id || "LINE_ID_None"; // LINE ID
+  tmpl.name = _name || "name_None"; // 名前
   return tmpl.evaluate().setTitle("日時選択");
 }
 

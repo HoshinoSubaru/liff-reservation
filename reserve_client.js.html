@@ -227,10 +227,10 @@
    * 「次へ進む」ボタン押下時の処理（個人情報入力ページへ遷移）
    */
   function submitReservation() {
-    _LineID = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
-    lineId = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
+    let _LineID = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
+    let lineId = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
 
-    _name = "<?= name ?>"; // サーバーから渡された名前
+    let _name = "<?= name ?>"; // サーバーから渡された名前
     console.log("submitReservation called");
 
     // 日付が選択されているかチェック

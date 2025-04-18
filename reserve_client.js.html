@@ -6,29 +6,22 @@
     // ----- 親ページの処理 -----
 
     async function initLIFF() {
-      _LineID = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
-      lineid = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
-
-      _name = "<?= name ?>"; // サーバーから渡された名前
+      const _LineID = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
+      const _name = "<?= name ?>"; // サーバーから渡された名前
       const redirectUrl = "<?= redirectUrl ?>"; // サーバーから渡されたリダイレクトURL
 
-      profile = { userId: _LineID, displayName: _name }
+      const profile = { userId: _LineID, displayName: _name };
 
-      // ここでサーバー側の processLineProfile を呼び出します
+      // サーバー側の processLineProfile を呼び出す
       google.script.run
-        .withSuccessHandler(function (result) {
-          console.log("サーバープロフィール処理結果:", result);
-        })
-        .withFailureHandler(function (err) {
-          console.error("サーバーエラー:", err);
-        })
-        .processLineProfile(lineid, name); //profile);
+        .withSuccessHandler(result => console.log("サーバープロフィール処理結果:", result))
+        .withFailureHandler(err => console.error("サーバーエラー:", err))
+        .processLineProfile(_LineID, _name);
     }
-
 
     // 子ページ（iframe）からプロフィール要求が来たら返答する
     window.addEventListener("message", event => {
-      if (event.data && event.data.requestProfile) {
+      if (event.data?.requestProfile) {
         const raw = localStorage.getItem("liffProfile") || "{}";
         const profile = JSON.parse(raw);
         event.source.postMessage({ liffProfile: profile }, "*");
@@ -41,12 +34,12 @@
     // 親ページへプロフィールをリクエストするヘルパー
     function requestProfile() {
       return new Promise(resolve => {
-        function handler(event) {
-          if (event.data && event.data.liffProfile) {
+        const handler = event => {
+          if (event.data?.liffProfile) {
             window.removeEventListener("message", handler);
             resolve(event.data.liffProfile);
           }
-        }
+        };
         window.addEventListener("message", handler);
         window.top.postMessage({ requestProfile: true }, "*");
       });
@@ -54,13 +47,12 @@
 
     // 親ページから送られてきたプロフィール情報を受信して保存
     window.addEventListener("message", event => {
-      if (event.data && event.data.liffProfile) {
+      if (event.data?.liffProfile) {
         localStorage.setItem("liffProfile", JSON.stringify(event.data.liffProfile));
         console.log("iframe: 親からプロフィール情報を受信しました", event.data.liffProfile);
       }
     });
   }
-
 
   // 日付と時間を保管するための変数
   let selectedDate = "";
@@ -69,23 +61,19 @@
 
   // ページ読み込み時の初期処理
   document.addEventListener("DOMContentLoaded", () => {
-    // サーバーからイベント情報を取得してカレンダーをセットアップ
     google.script.run.withSuccessHandler(setupCalendar).getEvents();
-
-    // 30分単位の時間ボタン生成
     generateTimeSlots();
-
-    // 「次へ進む」ボタンのクリックイベント登録
-    const nextButton = document.getElementById("next-button");
-    if (nextButton) {
-      nextButton.addEventListener("click", submitReservation);
-    }
-
-    // 各 option ボタングループの初期化（setupOptionGroup は1回だけ定義）
+    setupButtonEvent("next-button", submitReservation);
     setupOptionGroup("purpose-buttons", "purpose");
     setupOptionGroup("staff-buttons", "staff");
     setupOptionGroup("usage-buttons", "usage");
   });
+
+  // ボタンイベント登録のヘルパー関数
+  function setupButtonEvent(buttonId, callback) {
+    const button = document.getElementById(buttonId);
+    if (button) button.addEventListener("click", callback);
+  }
 
   /**
    * カレンダーの初期化処理 → 日付プルダウン用に変更
@@ -124,17 +112,15 @@
    */
   function getNextTwoWeeksDates(eventDates) {
     const today = new Date();
-    const twoWeeksLater = new Date();
+    const twoWeeksLater = new Date(today);
     twoWeeksLater.setDate(today.getDate() + 13);
 
-    const result = [];
-    for (let d = new Date(today); d <= twoWeeksLater; d.setDate(d.getDate() + 1)) {
-      const yyyyMMdd = d.toISOString().split("T")[0];
-      if (eventDates.includes(yyyyMMdd)) {
-        result.push(yyyyMMdd);
-      }
-    }
-    return result;
+    return Array.from({ length: 14 }, (_, i) => {
+      const date = new Date(today);
+      date.setDate(today.getDate() + i);
+      const yyyyMMdd = date.toISOString().split("T")[0];
+      return eventDates.includes(yyyyMMdd) ? yyyyMMdd : null;
+    }).filter(Boolean);
   }
 
   /**
@@ -152,22 +138,30 @@
     const container = document.getElementById("time-buttons");
     if (!container) return;
     container.innerHTML = "";
+
     for (let hour = 11; hour <= 18; hour++) {
       for (let minutes = 0; minutes < 60; minutes += 30) {
         if (hour === 18 && minutes > 30) break;
         const time = `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-        const btn = document.createElement("button");
-        btn.textContent = time;
-        btn.classList.add("time-button", "disabled");
-        btn.disabled = true;
-        btn.onclick = () => {
-          if (btn.disabled) return;
-          selectedTime = time;
-          updateSelectedDateTime();
-        };
+        const btn = createTimeButton(time);
         container.appendChild(btn);
       }
     }
+  }
+
+  // 時間ボタン生成のヘルパー関数
+  function createTimeButton(time) {
+    const btn = document.createElement("button");
+    btn.textContent = time;
+    btn.classList.add("time-button", "disabled");
+    btn.disabled = true;
+    btn.onclick = () => {
+      if (!btn.disabled) {
+        selectedTime = time;
+        updateSelectedDateTime();
+      }
+    };
+    return btn;
   }
 
   /**
@@ -176,13 +170,11 @@
   function updateSelectedDateTime() {
     const textArea = document.getElementById("selected-time");
     if (!textArea) return;
-    let combined = selectedDate + " " + selectedTime;
+    const combined = `${selectedDate} ${selectedTime}`;
     textArea.value = combined;
     sessionStorage.setItem("selectedDate", selectedDate);
     sessionStorage.setItem("selectedTime", combined);
-    console.log("selectedDate:", selectedDate);
-    console.log("selectedTime:", selectedTime);
-    console.log("Combined:", combined);
+    console.log("selectedDate:", selectedDate, "selectedTime:", selectedTime, "Combined:", combined);
   }
 
   /**
@@ -194,43 +186,26 @@
     const todayString = now.toISOString().split("T")[0];
     const eventsOnSelectedDate = eventsData.filter(event => event.start.split("T")[0] === selectedDate);
 
-    // 各時間ボタンに対して処理を適用
-    const buttons = document.querySelectorAll(".time-button");
-    buttons.forEach(btn => {
-      btn.disabled = false;
-      btn.classList.remove("disabled");
-      const slotStart = new Date(selectedDate + "T" + btn.textContent + ":00");
-
-      // 現時刻以前なら無効化する
-      if (selectedDate === todayString && slotStart < now) {
-        btn.disabled = true;
-        btn.classList.add("disabled");
-        return;
-      }
-
+    document.querySelectorAll(".time-button").forEach(btn => {
+      const slotStart = new Date(`${selectedDate}T${btn.textContent}:00`);
       const slotEnd = new Date(slotStart.getTime() + 30 * 60 * 1000);
-      // 既存の予約重複チェック
-      for (let event of eventsOnSelectedDate) {
+
+      btn.disabled = selectedDate === todayString && slotStart < now || eventsOnSelectedDate.some(event => {
         const eventStart = new Date(event.start);
         const eventEnd = new Date(event.end);
-        if (eventEnd > slotStart && eventStart < slotEnd) {
-          btn.disabled = true;
-          btn.classList.add("disabled");
-          break;
-        }
-      }
+        return eventEnd > slotStart && eventStart < slotEnd;
+      });
+
+      btn.classList.toggle("disabled", btn.disabled);
     });
   }
-
 
   /**
    * 「次へ進む」ボタン押下時の処理（個人情報入力ページへ遷移）
    */
   function submitReservation() {
-    let _LineID = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
-    let lineId = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
-
-    let _name = "<?= name ?>"; // サーバーから渡された名前
+    const _LineID = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
+    const _name = "<?= name ?>"; // サーバーから渡された名前
     console.log("submitReservation called");
 
     // 日付が選択されているかチェック
@@ -245,7 +220,7 @@
     }
 
     // 両方選択されている場合は連結して処理
-    const selectedText = selectedDate + " " + selectedTime;
+    const selectedText = `${selectedDate} ${selectedTime}`;
 
     // 選択日時をセッションに保存
     sessionStorage.setItem("selectedTime", selectedText);
@@ -264,10 +239,8 @@
     console.log("sendChatMessage called with:", message);
 
     //最後にリダイレクト
-    let baseUrl = "<?= redirectUrl ?>";
-    let lineId = "<?= lineid ?>";
-    let name = "<?= _name ?>";
-    const nextUrl = baseUrl + "?page=reserve_personal&line_id=" + lineId + "&name=" + name;
+    const baseUrl = "<?= redirectUrl ?>";
+    const nextUrl = `${baseUrl}?page=reserve_personal&line_id=${_LineID}&name=${_name}`;
     window.top.location.href = nextUrl;
   }
 
@@ -301,8 +274,8 @@
     // localStorageからプロフィール情報を取得
     let profile = localStorage.getItem("liffProfile");
 
-    let lineId = "<?= _LineID ?>";
-    let name = "<?= _name ?>";
+    const lineId = "<?= _LineID ?>";
+    const name = "<?= _name ?>";
 
     if (profile) {
       profile = JSON.parse(profile);
@@ -310,7 +283,7 @@
       profile = { displayName: name, userId: lineId };
     }
 
-    let message = "LIFFアプリ:予約登録時:profile 処理開始\n" +
+    const message = "LIFFアプリ:予約登録時:profile 処理開始\n" +
       "LINE名: " + profile.displayName + "\n" +
       "LINEID: " + profile.userId;
     google.script.run.sendChatMessage(message);
@@ -327,12 +300,7 @@
 
     console.log("submitPersonalInfo called", personalData);
 
-    let missingFields = [];
-    for (let key in personalData) {
-      if ((key !== 'time' && key !== 'date') && !personalData[key]) {
-        missingFields.push(key);
-      }
-    }
+    const missingFields = Object.keys(personalData).filter(key => (key !== 'time' && key !== 'date') && !personalData[key]);
     if (missingFields.length > 0) {
       alert("以下の項目が未入力です: " + missingFields.join(", "));
       return;
@@ -341,10 +309,10 @@
     console.log("Sending data to server...");
 
     google.script.run
-      .withSuccessHandler(function (eventId) {
+      .withSuccessHandler(() => {
         alert("予約が完了しました！\nこのあとLINEメッセージにて、ご予約内容をお送りいたします。");
       })
-      .withFailureHandler(function (err) {
+      .withFailureHandler(err => {
         alert("エラーが発生しました\nお手数ですが再度ご予約をお試しいただくか、当店までお問い合わせください。 " + err.message);
       })
       .submitReservationToSheet(personalData);

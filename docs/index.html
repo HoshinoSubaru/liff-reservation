@@ -87,7 +87,7 @@
       console.log("取得したプロフィール情報:", profile); // ログを追加
 
       // プロフィール表示
-      document.getElementById('displayName').textContent = profile.displayName;
+      document.getElementById('displayname').textContent = profile.displayName;
       document.getElementById('userId').textContent = profile.userId;
       document.getElementById('pictureUrl').src = profile.pictureUrl;
       document.getElementById('profile').style.display = 'block';
@@ -95,11 +95,10 @@
        // パラメータを動的に付与してLIFF URLにリダイレクト
       const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
       const params = new URLSearchParams({
-        userId: profile.userId,
+        lineId: profile.userId,
         name: profile.displayName,
         mode: "edit",
-        timestamp: new Date().getTime()
-      });
+       });
       const targetLiffUrl = `${baseLiffUrl}?${params.toString()}`;
 
       window.location.href = targetLiffUrl;

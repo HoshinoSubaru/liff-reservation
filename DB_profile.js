@@ -4,7 +4,9 @@ function test_processLineProfile_cases() {
   res = processLineProfile({ userId: "", displayName: "" });
   sendErrorToGoogleChat("GAS 顧客データテスト"+res)
   // テスト②: 新規登録（想定userIdでDBにまだ存在しない）
-  processLineProfile({ userId: "test_user_001", displayName: "テスト太郎" });
+  profile = { userId: "テンプレートのLINID", displayName: "テンプレートの　名前" }
+
+  processLineProfile({ userId: "テンプレートのLINID", displayName: "テンプレートの　名前" });
 
   // テスト③: 既に存在するが名前が違う（UPDATE）
   processLineProfile({ userId: "test_user_001", displayName: "テスト太郎・更新版" });
@@ -55,10 +57,12 @@ function getDbConfig() {
 function getConnection() {
   const config = getDbConfig();
   // 例: "jdbc:mysql://ホスト:ポート/データベース?useSSL=false"
-  const url = `jdbc:${config.connection}://${config.host}:${config.port}/${config.database}?useSSL=false`;
+  const url = `jdbc:${config.connection}://${config.host}:${config.port}/${config.database}?useSSL=false&characterEncoding=UTF-8`;
   Logger.log(url)
   Logger.log(config.user)
   Logger.log(config.password)
+  //utf-8の指定は、MySQLの文字コード設定に合わせてください
+  //const url = `jdbc:${config.connection}://${config.host}:${config.port}/${config.database}?useSSL=false&characterEncoding=UTF-8`;
   return Jdbc.getConnection(url, config.user, config.password);
 }
 
@@ -113,20 +117,14 @@ function sendSuccessToGoogleChat(successMessage) {
 function processLineProfile(profile) {
     Logger.log("Received profile: " + JSON.stringify(profile));
 
-  if (!profile.userId || !profile.displayName) {
+    const _LineID = profile.userId || "LINE_ID_None";
+    const _name = profile.displayName || "name_None";
+    
+  if (!_LineID || !_name) {
     throw new Error("プロフィール情報が不足しています。userId または displayName が空です。");
   }
 
-  /*  // 規定値の設定
-    if (!profile.userId || profile.userId === "None") {
-    profile.userId = "test_hoshino";
-    }
-    if (!profile.displayName || profile.displayName === "None") {
-      profile.displayName = "Hoshinoテスト";
-    }
-  */
-  
-  let conn = null;
+   let conn = null;
   try {
     // プロパティサービスから取得した接続情報でMySQLに接続
     conn = getConnection();
@@ -135,17 +133,17 @@ function processLineProfile(profile) {
     // 既存のデータがあるかチェックするためのSELECT文（キーは line_id）
     const selectQuery = 'SELECT line_name FROM Eoc_line WHERE line_id = ?';
     const selectStmt = conn.prepareStatement(selectQuery);
-    selectStmt.setString(1, profile.userId);
+    selectStmt.setString(1, _LineID);    
     const results = selectStmt.executeQuery();
     
     if (results.next()) {
       // 既存データがある場合 → line_name の変更をチェックし、必要なら UPDATE を実行
       const currentUserName = results.getString('line_name');
-      if (currentUserName !== profile.displayName) {
+      if (currentUserName !== _name) {
         const updateQuery = 'UPDATE Eoc_line SET line_name = ? WHERE line_id = ?';
         const updateStmt = conn.prepareStatement(updateQuery);
-        updateStmt.setString(1, profile.displayName);
-        updateStmt.setString(2, profile.userId);
+        updateStmt.setString(1, _LineID);
+        updateStmt.setString(2, _name);
         const updateCount = updateStmt.executeUpdate();
         Logger.log("プロフィール更新件数: " + updateCount);
         updateStmt.close();

@@ -2,7 +2,7 @@ function test_processLineProfile_cases() {
   sendErrorToGoogleChat("GAS 顧客データテスト")
   // テスト①: 規定値の代入が働くか
   res = processLineProfile({ userId: "", displayName: "" });
-  sendErrorToGoogleChat("GAS 顧客データテスト"+res)
+  sendErrorToGoogleChat("GAS 顧客データテスト" + res)
   // テスト②: 新規登録（想定userIdでDBにまだ存在しない）
   profile = { userId: "テンプレートのLINID", displayName: "テンプレートの　名前" }
 
@@ -19,7 +19,7 @@ function testInsertEocLine(line_id = "testDB:SU", line_name = "テストDB:名�
   const conn = getConnection();
   const stmt = conn.prepareStatement(
     //'INSERT INTO Eoc_line (line_id, line_name) VALUES ("'+line_id+'", "'+line_name+'")' // カラム名は実際のテーブルに合わせて
-      'INSERT INTO Eoc_line (line_id, line_name) VALUES (?,?)' // カラム名は実際のテーブルに合わせて
+    'INSERT INTO Eoc_line (line_id, line_name) VALUES (?,?)' // カラム名は実際のテーブルに合わせて
   );
 
   //stmt.setInt(1, 999);                            // id
@@ -75,7 +75,7 @@ function testQuery() {
     Logger.log(rs.getString(1)); // 1列目の値を表示（列名でもOK）
     //Console.log(rs.getString(1))
   }
-  
+
   rs.close();
   stmt.close();
   conn.close();
@@ -115,27 +115,27 @@ function sendSuccessToGoogleChat(successMessage) {
  * @return {String} 結果メッセージ（任意）
  */
 function processLineProfile(profile) {
-    Logger.log("Received profile: " + JSON.stringify(profile));
+  Logger.log("Received profile: " + JSON.stringify(profile));
 
-    const _LineID = profile.userId || "LINE_ID_None";
-    const _name = profile.displayName || "name_None";
-    
+  const _LineID = profile.userId || "LINE_ID_None";
+  const _name = profile.displayName || "name_None";
+
   if (!_LineID || !_name) {
     throw new Error("プロフィール情報が不足しています。userId または displayName が空です。");
   }
 
-   let conn = null;
+  let conn = null;
   try {
     // プロパティサービスから取得した接続情報でMySQLに接続
     conn = getConnection();
     Logger.log(conn)
-    
+
     // 既存のデータがあるかチェックするためのSELECT文（キーは line_id）
     const selectQuery = 'SELECT line_name FROM Eoc_line WHERE line_id = ?';
     const selectStmt = conn.prepareStatement(selectQuery);
-    selectStmt.setString(1, _LineID);    
+    selectStmt.setString(1, _LineID);
     const results = selectStmt.executeQuery();
-    
+
     if (results.next()) {
       // 既存データがある場合 → line_name の変更をチェックし、必要なら UPDATE を実行
       const currentUserName = results.getString('line_name');
@@ -160,22 +160,22 @@ function processLineProfile(profile) {
       Logger.log("プロフィール新規登録件数: " + insertCount);
       insertStmt.close();
     }
-    
+
     results.close();
     selectStmt.close();
-    
+
     // 成功時にGoogle Chatへ通知（line_idとline_name情報を送信）
     var successMessage = "DB登録成功\nline_id: " + profile.userId + "\nline_name: " + profile.displayName;
     sendSuccessToGoogleChat(successMessage);
 
     return "GAS⇒DBプロフィール処理完了";
-    
+
   } catch (e) {
     Logger.log("GAS⇒DBプロフィール処理エラー: " + e);
     // エラーが発生した場合、Google Chat にエラー内容を通知する
     sendErrorToGoogleChat(e.message);
     throw new Error("GAS⇒DBプロフィール処理に失敗しました。 " + e.message);
-    
+
   } finally {
     if (conn) {
       conn.close();

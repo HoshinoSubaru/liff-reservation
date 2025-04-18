@@ -24,42 +24,42 @@ function doGet(e) {
   // let name = "";
   // let mode = "";
 
-if (e.parameter["liff.state"]) {
-  try {
-    const rawState = e.parameter["liff.state"]; // 例: "?userId=...&name=...&mode=..."
-    const decoded = decodeURIComponent(rawState);
-    const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
-    const paramMap = {};
-    query.split("&").forEach(kv => {
-      const [key, value] = kv.split("=");
-      paramMap[key] = decodeURIComponent(value || "");
-    });
-    _LineID = paramMap.userId || "LINE_ID_None";
-    _name = paramMap.name || "name_None";
-    _mode = paramMap.mode || "mode_None";
-
-    if (!_LineID || !_name) {
-      throw new Error("liff.state に必要なパラメータが不足しています。");
-    }
-  } catch (err) {
-    Logger.log("liff.state の解析に失敗しました: " + err.message);
-    throw new Error("liff.state の解析に失敗しました。");
-  }
-} else 
-  // liff.state パラメータがある場合はそちらから解析
   if (e.parameter["liff.state"]) {
-    const rawState = e.parameter["liff.state"]; // 例: "?userId=...&name=...&mode=..."
-    const decoded = decodeURIComponent(rawState);
-    const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
-    const paramMap = {};
-    query.split("&").forEach(kv => {
-      const [key, value] = kv.split("=");
-      paramMap[key] = decodeURIComponent(value);
-    });
-    _LineID = paramMap.userId;
-    _name = paramMap.name;
-    _mode = paramMap.mode;
-  } 
+    try {
+      const rawState = e.parameter["liff.state"]; // 例: "?userId=...&name=...&mode=..."
+      const decoded = decodeURIComponent(rawState);
+      const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
+      const paramMap = {};
+      query.split("&").forEach(kv => {
+        const [key, value] = kv.split("=");
+        paramMap[key] = decodeURIComponent(value || "");
+      });
+      _LineID = paramMap.userId || "LINE_ID_None";
+      _name = paramMap.name || "name_None";
+      _mode = paramMap.mode || "mode_None";
+
+      if (!_LineID || !_name) {
+        throw new Error("liff.state に必要なパラメータが不足しています。");
+      }
+    } catch (err) {
+      Logger.log("liff.state の解析に失敗しました: " + err.message);
+      throw new Error("liff.state の解析に失敗しました。");
+    }
+  } else
+    // liff.state パラメータがある場合はそちらから解析
+    if (e.parameter["liff.state"]) {
+      const rawState = e.parameter["liff.state"]; // 例: "?userId=...&name=...&mode=..."
+      const decoded = decodeURIComponent(rawState);
+      const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
+      const paramMap = {};
+      query.split("&").forEach(kv => {
+        const [key, value] = kv.split("=");
+        paramMap[key] = decodeURIComponent(value);
+      });
+      _LineID = paramMap.userId;
+      _name = paramMap.name;
+      _mode = paramMap.mode;
+    }
   /*
   // liff.state がない場合、直接 e.parameter から取得
   else if (e.parameter.line_id) {
@@ -73,7 +73,7 @@ if (e.parameter["liff.state"]) {
     _mode = "mode_None";
   }
     */
-  
+
   // グローバル変数に代入
   //_LineID = lineId;
   //_name = name;
@@ -82,7 +82,7 @@ if (e.parameter["liff.state"]) {
   Logger.log("✅ userId: " + _LineID);
   Logger.log("✅ name: " + _name);
   Logger.log("✅ mode: " + _mode);
-  
+
   // DB のテスト登録（受け取った _LineID を使っている例）
   testInsertEocLine(_LineID);
   try {
@@ -100,19 +100,19 @@ if (e.parameter["liff.state"]) {
     }
     try {
       sendChatMessage("2ページ目 GAS LINE IDの取得 " + _LineID);
-    } catch (e) {}
+    } catch (e) { }
   } else {
     //reserve_dateの表示
-    
+
     tmpl = HtmlService.createTemplateFromFile("reserve_date");
     tmpl.lineId = _LineID
     tmpl.name = _name
     tmpl.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME);
     try {
       sendChatMessage("最初のページ " + _LineID);
-    } catch (e) {}
+    } catch (e) { }
   }
-  
+
   tmpl.redirectUrl = ScriptApp.getService().getUrl(); // リダイレクトURL
   tmpl.lineId = _LineID || "lineId_none"//e.parameter.line_id || "LINE_ID_None"; // LINE ID
   tmpl.name = _name || "name_None"; // 名前
@@ -125,19 +125,19 @@ if (e.parameter["liff.state"]) {
  ***************************************/
 function include(filename) {
   Logger.log("✅ filename: " + filename);
-  
+
   Logger.log("✅ _LineID: " + _LineID);
   Logger.log("✅ name: " + _name);
   Logger.log("✅ mode: " + _mode);
   const tmpl = HtmlService.createTemplateFromFile(filename);
   tmpl.lineId = _LineID
   tmpl.lineid = _LineID
-  
+
   tmpl._LineID = _LineID
-  
+
   tmpl.name = _name
   tmpl._name = _name
-  
+
   tmpl.redirectUrl = ScriptApp.getService().getUrl();
   Logger.log(tmpl)
   return tmpl.evaluate().getContent();
@@ -238,7 +238,7 @@ function submitReservationToSheet(reservationData) {
     Logger.log("Calendar Event created with ID: " + calendarEventId);
     sendLinePushNotification(reservationData, calendarEventId);
     return calendarEventId;
-    
+
   } catch (err) {
     Logger.log("Error details: " + err.message);
     Logger.log("Stack trace: " + err.stack);
@@ -265,8 +265,8 @@ function addCalendarEvent(reservationData) {
   // イベントオブジェクトの作成
   const eventObj = {
     summary: `${reservationData.purpose}：LINE予約：${displayName}さま`,
-    description: 
-  `予約者名:${displayName}さま
+    description:
+      `予約者名:${displayName}さま
   担当者希望: ${reservationData.staff || "未入力"}
   用途: ${reservationData.purpose || "なし"}
   来店回数: ${reservationData.usage || "未入力"}
@@ -290,7 +290,7 @@ function addCalendarEvent(reservationData) {
     Logger.log("Event created with ID: " + newEvent.id);
 
     // 招待するゲストリストの設定（主催者も含める場合）
-    let requiredGuests = ["subaru6363natuko@gmail.com","s.hoshino@urlounge.co.jp"];
+    let requiredGuests = ["subaru6363natuko@gmail.com", "s.hoshino@urlounge.co.jp"];
     requiredGuests.unshift(CALENDAR_ID);  // 主催者（カレンダーID）をゲストリストの先頭に追加
 
     Logger.log("招待するゲストリスト: " + requiredGuests.join(", "));
@@ -320,10 +320,10 @@ function sendLinePushNotification(reservationData, calendarEventId) {
 
   // 送信先: LIFFで取得したユーザーIDを利用
   const to = _LineID;
-  
-// "time" を日付と時間に分割（例："2025-03-25 17:00"）
+
+  // "time" を日付と時間に分割（例："2025-03-25 17:00"）
   const [reservationDate, reservationTime] = time.split(" ");
- 
+
   // LINE Messaging API のエンドポイント
   const url = "https://api.line.me/v2/bot/message/push";
   // チャネルアクセストークン
@@ -343,7 +343,7 @@ function sendLinePushNotification(reservationData, calendarEventId) {
     "担当者: " + staff + "\n" +
     "ご利用回数: " + usage + "\n\n" +
     "その他、お困りごとはございましたでしょうか。";
-    
+
   const payload = {
     to: to,
     messages: [
@@ -363,7 +363,7 @@ function sendLinePushNotification(reservationData, calendarEventId) {
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   };
-  
+
   // APIリクエスト実行
   const response = UrlFetchApp.fetch(url, options);
   Logger.log("LINE PUSH response: " + response.getContentText());

@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LIFF + GAS リダイレクト付き</title>
+  <title>LIFF + GAS iframe</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 
   <style>
@@ -48,6 +48,14 @@
       border-radius: 50%;
       margin-top: 10px;
     }
+
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+      margin-top: 30px;
+      display: none;
+    }
   </style>
 </head>
 
@@ -61,50 +69,39 @@
     <img id="pictureUrl" src="" alt="プロフィール画像">
   </div>
 
+  <iframe id="gasFrame" src=""></iframe>
+
   <script>
+    
     async function main() {
-      await liff.init({ liffId: "1653447401-q2p5DXw5" });
+      await liff.init({ liffId: "1653447401-q2p5DXw5" }); // ← あなたのLIFF IDに変更！
 
       if (!liff.isLoggedIn()) {
         liff.login();
         return;
       }
-
-      const urlParams = new URLSearchParams(window.location.search);
-      const userId = urlParams.get("userId");
-      const name = urlParams.get("name");
-
-      if (userId && name) {
-        // データがある → 自動リダイレクト
-        const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
-        const params = new URLSearchParams({
-          userId: userId,
-          name: name,
-          mode: "edit"
-        });
-        const targetUrl = `${baseLiffUrl}?${params.toString()}`;
-        window.location.href = targetUrl;
-      }
     }
 
     async function getUserProfile() {
       const profile = await liff.getProfile();
-      console.log("取得したプロフィール情報:", profile);
+      console.log("取得したプロフィール情報:", profile); // ログを追加
 
+      // プロフィール表示
       document.getElementById('displayName').textContent = profile.displayName;
       document.getElementById('userId').textContent = profile.userId;
       document.getElementById('pictureUrl').src = profile.pictureUrl;
       document.getElementById('profile').style.display = 'block';
 
-      // リダイレクト
+       // パラメータを動的に付与してLIFF URLにリダイレクト
       const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
       const params = new URLSearchParams({
         userId: profile.userId,
         name: profile.displayName,
-        mode: "edit"
-      });
-      const targetUrl = `${baseLiffUrl}?${params.toString()}`;
-      window.location.href = targetUrl;
+        mode: "edit",
+       });
+      const targetLiffUrl = `${baseLiffUrl}?${params.toString()}`;
+
+      window.location.href = targetLiffUrl;
     }
 
     main();

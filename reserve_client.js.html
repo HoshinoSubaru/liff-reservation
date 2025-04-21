@@ -54,6 +54,7 @@
     });
   }
 
+    
   // 日付と時間を保管するための変数
   let selectedDate = "";
   let selectedTime = "";
@@ -61,7 +62,10 @@
 
   // ページ読み込み時の初期処理
   document.addEventListener("DOMContentLoaded", () => {
+    // サーバーからイベント情報を取得してカレンダーをセットアップ
     google.script.run.withSuccessHandler(setupCalendar).getEvents();
+  
+    // 30分単位の時間ボタン生成
     generateTimeSlots();
     setupButtonEvent("next-button", submitReservation);
     setupOptionGroup("purpose-buttons", "purpose");

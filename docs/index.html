@@ -10,6 +10,29 @@
 
 <body style="display: none;">
   <script>
+  async function main() {
+    await liff.init({ liffId: "1653447401-q2p5DXw5" });
+    if (!liff.isLoggedIn())
+     { liff.login();
+       return; }
+
+    const profile = await liff.getProfile();
+    console.log("取得したプロフィール情報:", profile); // ログを追加
+
+    // ① state 用のクエリ文字列を自前で組み立て
+    const rawState = `?userId=${encodeURIComponent(profile.userId)}&name=${encodeURIComponent(profile.displayName)}&mode=edit`;
+    const encodedState = encodeURIComponent(rawState);
+
+    // ② liff.state にまとめて付与
+    const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
+    const targetUrl = `${baseLiffUrl}?liff.state=${encodedState}`;
+
+    window.location.href = targetUrl;
+  }
+  main();
+
+
+  /**
     async function main() {
       await liff.init({ liffId: "1653447401-q2p5DXw5" });
 
@@ -40,6 +63,7 @@
     }
 
     main();
+    */
   </script>
 </body>
 

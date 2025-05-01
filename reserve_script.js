@@ -14,19 +14,20 @@ let _mode = ""
  * ページ振り分け用
  ***************************************/
 function doGet(e) {
-  Logger.log("ScriptApp.getService().getUrl(): %s", ScriptApp.getService().getUrl());
-  Logger.log(JSON.stringify(e))
-  Logger.log("e.parameter: " + JSON.stringify(e.parameter));
-  const page = e.parameter.page;
+  Logger.log("ScriptApp URL: %s", ScriptApp.getService().getUrl());
+  Logger.log("Raw event: %s", JSON.stringify(e));
+  Logger.log("Parameters: %s", JSON.stringify(e.parameter));
 
-  // ローカル変数は削除
-  // let userId = "";
-  // let name = "";
-  // let mode = "";
-
-  if (e.parameter["liff.state"]) {
+  const page = e.parameter.page || "";
+  
+  // プロフィールデータの取得（line_idパラメータとliff.stateの両方をチェック）
+  if (e.parameter.line_id) {
+    _LineID = e.parameter.line_id;
+    _name = e.parameter.name || "name_None";
+    _mode = e.parameter.mode || "mode_None";
+  } else if (e.parameter["liff.state"]) {
     try {
-      const rawState = e.parameter["liff.state"]; // 例: "?userId=...&name=...&mode=..."
+      const rawState = e.parameter["liff.state"];
       const decoded = decodeURIComponent(rawState);
       const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
       const paramMap = {};
@@ -37,86 +38,34 @@ function doGet(e) {
       _LineID = paramMap.userId || "LINE_ID_None";
       _name = paramMap.name || "name_None";
       _mode = paramMap.mode || "mode_None";
-
-      if (!_LineID || !_name) {
-        throw new Error("liff.state に必要なパラメータが不足しています。");
-      }
     } catch (err) {
-      Logger.log("liff.state の解析に失敗しました: " + err.message);
-      throw new Error("liff.state の解析に失敗しました。");
+      Logger.log("liff.state 解析エラー: %s", err.message);
+      _LineID = "LINE_ID_None";
+      _name = "name_None";
+      _mode = "mode_None";
     }
-  } else
-    // liff.state パラメータがある場合はそちらから解析
-    if (e.parameter["liff.state"]) {
-      const rawState = e.parameter["liff.state"]; // 例: "?userId=...&name=...&mode=..."
-      const decoded = decodeURIComponent(rawState);
-      const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
-      const paramMap = {};
-      query.split("&").forEach(kv => {
-        const [key, value] = kv.split("=");
-        paramMap[key] = decodeURIComponent(value);
-      });
-      _LineID = paramMap.userId;
-      _name = paramMap.name;
-      _mode = paramMap.mode;
-    }
-  /*
-  // liff.state がない場合、直接 e.parameter から取得
-  else if (e.parameter.line_id) {
-    _LineID = e.parameter.line_id;
-    _name = e.parameter.name || "";
-    _mode = e.parameter.mode || "";
   } else {
-    // パラメータが全く無い場合のフォールバック（必要ならデフォルト値を設定）
-    _LineID = "LINE_ID_None";  
+    _LineID = "LINE_ID_None";
     _name = "name_None";
     _mode = "mode_None";
   }
-    */
 
-  // グローバル変数に代入
-  //_LineID = lineId;
-  //_name = name;
-  //_mode = mode;
+  Logger.log("Profile data - LINE ID: %s, Name: %s, Mode: %s", _LineID, _name, _mode);
 
-  Logger.log("✅ userId: " + _LineID);
-  Logger.log("✅ name: " + _name);
-  Logger.log("✅ mode: " + _mode);
+  // テンプレートの作成と値の設定
+  const tmpl = HtmlService.createTemplateFromFile(page || "reserve_date");
+  tmpl.lineId = _LineID;
+  tmpl.name = _name;
+  tmpl.mode = _mode;
 
-  // DB のテスト登録（受け取った _LineID を使っている例）
-  testInsertEocLine(_LineID);
-  try {
-    sendChatMessage("最初のページ " + _LineID);
-  } catch (e) {
-    Logger.log("sendChatMessage エラー:" + e.message);
-  }
+  // リダイレクトURLの設定（必要な場合）
+  tmpl.redirectUrl = ScriptApp.getService().getUrl();
 
-  let tmpl;
-  if (page === 'reserve_personal') {
-    tmpl = HtmlService.createTemplateFromFile("reserve_personal");
-    if (e.parameter.line_id) {
-      _LineID = e.parameter.line_id;
-      _name = e.parameter.name;
-    }
-    try {
-      sendChatMessage("2ページ目 GAS LINE IDの取得 " + _LineID);
-    } catch (e) { }
-  } else {
-    //reserve_dateの表示
-
-    tmpl = HtmlService.createTemplateFromFile("reserve_date");
-    tmpl.lineId = _LineID
-    tmpl.name = _name
-    tmpl.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME);
-    try {
-      sendChatMessage("最初のページ " + _LineID);
-    } catch (e) { }
-  }
-
-  tmpl.redirectUrl = ScriptApp.getService().getUrl(); // リダイレクトURL
-  tmpl.lineId = _LineID || "lineId_none"//e.parameter.line_id || "LINE_ID_None"; // LINE ID
-  tmpl.name = _name || "name_None"; // 名前
-  return tmpl.evaluate().setTitle("日時選択");
+  return tmpl
+    .evaluate()
+    .setTitle("予約システム")
+    .addMetaTag("viewport", "width=device-width, initial-scale=1")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
 /***************************************
@@ -130,13 +79,8 @@ function include(filename) {
   Logger.log("✅ name: " + _name);
   Logger.log("✅ mode: " + _mode);
   const tmpl = HtmlService.createTemplateFromFile(filename);
-  tmpl.lineId = _LineID
-  tmpl.lineid = _LineID
-
-  tmpl._LineID = _LineID
-
-  tmpl.name = _name
-  tmpl._name = _name
+  tmpl.lineId = _LineID;
+  tmpl.name = _name;
 
   tmpl.redirectUrl = ScriptApp.getService().getUrl();
   Logger.log(tmpl)

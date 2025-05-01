@@ -6,17 +6,24 @@
     // ----- 親ページの処理 -----
 
     async function initLIFF() {
-      const _LineID = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
-      const _name = "<?= name ?>"; // サーバーから渡された名前
-      const redirectUrl = "<?= redirectUrl ?>"; // サーバーから渡されたリダイレクトURL
+      const _LineID = "<?= lineId ?>";  // _LineID → lineId に修正
+      const _name = "<?= name ?>";
+      const redirectUrl = "<?= redirectUrl ?>";
 
+      // profile オブジェクトを正しい形式で作成
       const profile = { userId: _LineID, displayName: _name };
 
       // サーバー側の processLineProfile を呼び出す
       google.script.run
-        .withSuccessHandler(result => console.log("サーバープロフィール処理結果:", result))
-        .withFailureHandler(err => console.error("サーバーエラー:", err))
-        .processLineProfile(_LineID, _name);
+        .withSuccessHandler(result => {
+          console.log("サーバープロフィール処理結果:", result);
+          // プロフィールをローカルストレージに保存
+          localStorage.setItem("liffProfile", JSON.stringify(profile));
+        })
+        .withFailureHandler(err => {
+          console.error("サーバーエラー:", err);
+        })
+        .processLineProfile(profile);  // オブジェクトとして渡す
     }
 
     // 子ページ（iframe）からプロフィール要求が来たら返答する
@@ -208,9 +215,9 @@
    * 「次へ進む」ボタン押下時の処理（個人情報入力ページへ遷移）
    */
   function submitReservation() {
-    const _LineID = "<?= _LineID ?>"; // サーバーから渡されたLINE ID
-    const _name = "<?= name ?>"; // サーバーから渡された名前
-    console.log("submitReservation called");
+    const _LineID = "<?= lineId ?>"; // 修正: _LineID → lineId
+    const _name = "<?= name ?>";
+    console.log("submitReservation - LINE ID:", _LineID, "Name:", _name);
 
     // 日付が選択されているかチェック
     if (!selectedDate) {
@@ -225,26 +232,16 @@
 
     // 両方選択されている場合は連結して処理
     const selectedText = `${selectedDate} ${selectedTime}`;
-
-    // 選択日時をセッションに保存
     sessionStorage.setItem("selectedTime", selectedText);
 
-    // localStorage から LIFF プロフィールを取得
-    const raw = localStorage.getItem("liffProfile");
-    const profile = raw ? JSON.parse(raw) : {};
-
-    // メッセージ組み立て＆送信
-    const message =
-      "LIFFアプリ:redirect時:profile 処理開始\n" +
-      "LINE名: " + (_name || "") + "\n" +
-      "LINEID: " + (_LineID || "") + "\n" +
-      "選択日時: " + selectedText;
-    google.script.run.sendChatMessage(message);
-    console.log("sendChatMessage called with:", message);
-
-    //最後にリダイレクト
+    // リダイレクト用URLの構築
     const baseUrl = "<?= redirectUrl ?>";
-    const nextUrl = `${baseUrl}?page=reserve_personal&line_id=${_LineID}&name=${_name}`;
+    const nextUrl = `${baseUrl}?page=reserve_personal&line_id=${encodeURIComponent(_LineID)}&name=${encodeURIComponent(_name)}`;
+    
+    // デバッグログ
+    console.log("Redirecting to:", nextUrl);
+    
+    // リダイレクト実行
     window.top.location.href = nextUrl;
   }
 
@@ -275,22 +272,9 @@
       storedTime = "2025-03-25 17:00";  // テスト用デフォルト日時
     }
 
-    // localStorageからプロフィール情報を取得
-    let profile = localStorage.getItem("liffProfile");
-
-    const lineId = "<?= _LineID ?>";
-    const name = "<?= _name ?>";
-
-    if (profile) {
-      profile = JSON.parse(profile);
-    } else {
-      profile = { displayName: name, userId: lineId };
-    }
-
-    const message = "LIFFアプリ:予約登録時:profile 処理開始\n" +
-      "LINE名: " + profile.displayName + "\n" +
-      "LINEID: " + profile.userId;
-    google.script.run.sendChatMessage(message);
+    // プロフィール情報の取得（サーバーから渡された値を優先）
+    const lineId = "<?= lineId ?>";  // 修正: _LineID → lineId
+    const name = "<?= name ?>";
 
     const personalData = {
       time: storedTime,
@@ -298,20 +282,23 @@
       purpose: document.getElementById("purpose").value,
       staff: document.getElementById("staff").value,
       usage: document.getElementById("usage").value,
-      lineName: profile ? profile.displayName : "",
-      lineId: profile ? profile.userId : ""
+      lineName: name,
+      lineId: lineId
     };
 
-    console.log("submitPersonalInfo called", personalData);
+    console.log("submitPersonalInfo - Profile data:", { lineId, name });
+    console.log("submitPersonalInfo - Form data:", personalData);
 
-    const missingFields = Object.keys(personalData).filter(key => (key !== 'time' && key !== 'date') && !personalData[key]);
+    // 必須項目の検証
+    const missingFields = Object.keys(personalData).filter(key => 
+      (key !== 'time' && key !== 'date') && !personalData[key]
+    );
     if (missingFields.length > 0) {
       alert("以下の項目が未入力です: " + missingFields.join(", "));
       return;
     }
 
-    console.log("Sending data to server...");
-
+    // サーバーにデータを送信
     google.script.run
       .withSuccessHandler(() => {
         alert("予約が完了しました！\nこのあとLINEメッセージにて、ご予約内容をお送りいたします。");
@@ -321,4 +308,18 @@
       })
       .submitReservationToSheet(personalData);
   }
+
+  async function requestSMS() {
+    const phone = document.getElementById('phone').value;
+    const res = await fetch(GAS_URL + '?action=send', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const json = await res.json();
+    alert(json.message);
+    if (json.success) document.getElementById('verifySection').style.display = 'block';
+  }
+
+  
 </script>

@@ -34,23 +34,33 @@
   await liff.init({ liffId: "1653447401-q2p5DXw5" });
 
   if (!liff.isLoggedIn()) {
-    liff.login({ redirectUri: location.href });  // 自分に戻す
+    // ログイン前なら state に情報を埋めてログインさせる
+    const redirectParams = new URLSearchParams({
+      userId: "placeholder", // 一度 login 後に getProfile() で上書き
+    });
+    liff.login({
+      redirectUri: location.href,
+      state: redirectParams.toString()
+    });
     return;
   }
 
   const profile = await liff.getProfile();
 
+  // 👇 URLパラメータではなく、state付きで次のLIFFに渡す
   const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
-  const params = new URLSearchParams({
+  const stateParams = new URLSearchParams({
     userId: profile.userId,
     name: profile.displayName,
     mode: "edit"
   });
+  const stateString = encodeURIComponent("?" + stateParams.toString());
+  const targetUrl = `${baseLiffUrl}?liff.state=${stateString}`;
 
-  const targetUrl = '${baseLiffUrl}?${params.toString()}';
   window.location.href = targetUrl;
 }
-    main();
+main();
+
   </script>
 </body>
 

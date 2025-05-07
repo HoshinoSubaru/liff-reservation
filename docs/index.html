@@ -40,22 +40,20 @@
 
   const profile = await liff.getProfile();
 
-  const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
-  const queryParams = new URLSearchParams({
+  const baseGASUrl = "https://script.google.com/macros/s/【あなたのGASデプロイURL】/exec";  // LIFFではなくGASのWeb App URL
+
+  const params = new URLSearchParams({
     line_id: profile.userId,
     name: profile.displayName,
     mode: "edit"
   });
 
-  // ✅ liff.state は使わない。URLパラメータに直接付ける。
-  const targetUrl = `${baseLiffUrl}?${queryParams.toString()}`;
-  console.log("Redirecting to:", targetUrl);  // 開発者ツールで確認
-
+  const targetUrl = `${baseGASUrl}?${params.toString()}`;
+  console.log("Redirecting to:", targetUrl);
   window.location.href = targetUrl;
 }
+
 main();
-
-
   </script>
 </body>
 

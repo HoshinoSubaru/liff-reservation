@@ -34,32 +34,27 @@
   await liff.init({ liffId: "1653447401-q2p5DXw5" });
 
   if (!liff.isLoggedIn()) {
-    // ログイン前なら state に情報を埋めてログインさせる
-    const redirectParams = new URLSearchParams({
-      userId: "placeholder", // 一度 login 後に getProfile() で上書き
-    });
-    liff.login({
-      redirectUri: location.href,
-      state: redirectParams.toString()
-    });
+    liff.login({ redirectUri: location.href });  // ログイン後に自分へ戻る
     return;
   }
 
   const profile = await liff.getProfile();
 
-  // 👇 URLパラメータではなく、state付きで次のLIFFに渡す
   const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
-  const stateParams = new URLSearchParams({
-    userId: profile.userId,
+  const queryParams = new URLSearchParams({
+    line_id: profile.userId,
     name: profile.displayName,
     mode: "edit"
   });
-  const stateString = encodeURIComponent("?" + stateParams.toString());
-  const targetUrl = `${baseLiffUrl}?liff.state=${stateString}`;
+
+  // ✅ liff.state は使わない。URLパラメータに直接付ける。
+  const targetUrl = `${baseLiffUrl}?${queryParams.toString()}`;
+  console.log("Redirecting to:", targetUrl);  // 開発者ツールで確認
 
   window.location.href = targetUrl;
 }
 main();
+
 
   </script>
 </body>

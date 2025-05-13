@@ -68,7 +68,7 @@
       await liff.init({ liffId: "1653447401-q2p5DXw5" }); // ← あなたのLIFF IDに変更！
 
       if (!liff.isLoggedIn()) {
-        liff.login();
+        liff.login({ redirectUri: location.href });
         return;
       }
     }
@@ -82,15 +82,24 @@
       document.getElementById('pictureUrl').src = profile.pictureUrl;
       document.getElementById('profile').style.display = 'block';
 
-      // iframeにGAS URLを設定（パラメータ付き）
-      const displayName = encodeURIComponent(profile.displayName);
-      const userId = encodeURIComponent(profile.userId);
-      const iframe = document.getElementById("gasFrame");
-      iframe.src = `https://script.google.com/macros/s/AKfycbyUd6w9u9jzD937lPkvLOOBREhoRqCKn8IDf47f2Px7iXrJN8WoSE8rZTEyodRhv8Sr/exec?page=reserve_personal&name=${displayName}&uid=${userId}`;
-      iframe.style.display = "block";
-    }
+    // Firebaseへ送信 → GASのHTMLを受け取ってそのまま表示
+    const response = await fetch("https://us-central1-xxxx.cloudfunctions.net/relayToGAS", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uid: profile.userId,
+        name: profile.displayName,
+        page: "reserve_personal"
+      })
+    });
 
-    main();
+    const html = await response.text();
+    document.open();
+    document.write(html);
+    document.close();
+  }
+
+  main();
   </script>
 </body>
 </html>

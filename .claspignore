@@ -1,0 +1,7 @@
+firebase-relay/
+node_modules/
+**/node_modules/**
+**/*.lock
+functions/
+.firebase/
+.eslintrc.js

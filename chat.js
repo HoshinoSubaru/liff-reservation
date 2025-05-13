@@ -1,5 +1,5 @@
 function sendChatMessage(message) {
-  const webhookUrl = "https://chat.googleapis.com/v1/spaces/AAAAowAXTm4/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=rpyX9-0V79XzhWVjAdtz-RFizGuO7WRWImNImwkKY3o"; // ← 自分のWebhook URLに置き換え
+  const webhookUrl = "https://chat.googleapis.com/v1/spaces/AAAAF_b7vzQ/messages?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI&token=6WgKFXw37IUl2puKyMuiaefXuVOGUjhXQgw5wN5KrwI"; // ← 自分のWebhook URLに置き換え
 
   const payload = {
     text: message

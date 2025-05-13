@@ -68,7 +68,7 @@
       await liff.init({ liffId: "1653447401-q2p5DXw5" }); // ← あなたのLIFF IDに変更！
 
       if (!liff.isLoggedIn()) {
-        liff.login();
+        liff.login({ redirectUri: location.href });
         return;
       }
     }

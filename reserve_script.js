@@ -12,64 +12,41 @@ let _LineID = ""
  * ページ振り分け用
  ***************************************/
 function doGet(e) {
-  Logger.log("ScriptApp.getService().getUrl(): %s", ScriptApp.getService().getUrl());
-  Logger.log(JSON.stringify(e))
-  const page = e.parameter.page;
+  Logger.log("e.parameter: " + JSON.stringify(e.parameter));
+  const params = e.parameter;
+  const lineId = params.uid || "LINE_ID_None";  // ← iframeから来るパラメータ名に合わせた
+  const name = params.name || "name_None";
+  const mode = params.mode || "mode_None";
+  const page = params.page;
 
-   //ここから
-    const rawState = e.parameter['liff.state']; // 例: "?userId=...&name=...&mode=..."
-    const decoded = decodeURIComponent(rawState); // 念のためデコード
+  Logger.log("✅ userId: " + lineId);
+  Logger.log("✅ name: " + name);
+  Logger.log("✅ mode: " + mode);
+  Logger.log("✅ page: " + page);
 
-    const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
-
-    const paramMap = {};
-    query.split("&").forEach(kv => {
-      const [key, value] = kv.split("=");
-      paramMap[key] = decodeURIComponent(value);
-    });
-
-    _LineID = paramMap.userId;
-    const name = paramMap.name;
-    const mode = paramMap.mode;
-
-    Logger.log("✅ userId: " + _LineID);
-    Logger.log("✅ name: " + name);
-    Logger.log("✅ mode: " + mode);
-  
-    testInsertEocLine(_LineID)
-    //sendChatMessage("GAS LINE IDの取得"+_LineID)
+  try {
+    testInsertEocLine(lineId);
+    sendChatMessage("GAS LINE IDの取得: " + lineId);
+  } catch (err) {
+    Logger.log("sendChatMessage エラー: " + err.message);
+  }
 
   let tmpl;
-
   if (page === 'reserve_personal') {
     tmpl = HtmlService.createTemplateFromFile("reserve_personal");
-    _LineID = e.parameter.line_id
-    try{
-        sendChatMessage("2ページ目 GAS LINE IDの取得"+_LineID)
-    }catch(e){
-
-    }
   } else {
-    //ifrale rediect 許可
     tmpl = HtmlService.createTemplateFromFile("reserve_date");
-    tmpl.evaluate().setSandboxMode(HtmlService.SandboxMode.IFRAME);
-
- 
-
-    try{
-        sendChatMessage("最初のページ"+_LineID)
-    }catch(e){
-      
-    }
   }
-  tmpl.lineId = "_LineID";
-  tmpl.redirectUrl = ScriptApp.getService().getUrl()// + "?line_id=" + encodeURIComponent(_LineID) + "&";
 
+  tmpl.lineId = lineId;
+  tmpl.name = name;
+  tmpl.redirectUrl = ScriptApp.getService().getUrl();
 
   return tmpl.evaluate().setTitle(
     page === 'reserve_personal' ? "個人情報入力" : "日時選択"
   );
 }
+
 
 /***************************************
  * テンプレート内で

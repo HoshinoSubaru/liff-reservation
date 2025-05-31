@@ -2,6 +2,64 @@
   // LIFF IDが変更になったら、5行目のLIFF IDも必ず更新する事
 
 // 親ページかiframeかを判定する
+if (typeof google === "undefined") window.google = {};
+if (!google.script) google.script = {};
+
+(() => {
+  const handlers = {
+    success: () => {},
+    failure: () => {}
+  };
+
+  const runProxy = new Proxy({}, {
+    get(_, functionName) {
+      return (...args) => {
+        console.log("[GAS呼び出し開始] 関数名:", functionName, "引数:", args);
+
+        fetch("/refasta_master/api/gas/call", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            function: functionName,
+            params: args
+          })
+        })
+          .then(res => {
+            console.log("[fetch応答受信] ステータス:", res.status);
+            return res.json();
+          })
+          .then(data => {
+            console.log("[GAS応答データ]", data);
+            if (handlers.success) handlers.success(data.result);
+          })
+          .catch(err => {
+            console.error("[GASエラー]", err);
+            if (handlers.failure) handlers.failure(err);
+          });
+      };
+    }
+  });
+
+  google.script.run = runProxy;
+  google.script.run.withSuccessHandler = (fn) => {
+    handlers.success = fn;
+    console.log("[SuccessHandler登録]");
+    return runProxy;
+  };
+  google.script.run.withFailureHandler = (fn) => {
+    handlers.failure = fn;
+    console.log("[FailureHandler登録]");
+    return runProxy;
+  };
+})();
+
+
+
+
+
+
+
+/*
 if (window.top === window.self) {
   function initLIFF() {
     liff.init({ liffId: '1653447401-5bNBkyQB' })
@@ -66,7 +124,7 @@ if (window.top === window.self) {
       }
     });
   }
-
+  */
     
   // 日付と時間を保管するための変数
   let selectedDate = "";
@@ -97,6 +155,7 @@ if (window.top === window.self) {
    * カレンダーの初期化処理 → 日付プルダウン用に変更
    */
   function setupCalendar(events) {
+    console.log("setupCalender スタート"); // ← ここで受け取る
     eventsData = events;
     const availableDates = getNextTwoWeeksDates(events.map(e => e.start.split("T")[0]));
     const calendarElem = document.getElementById("selectDate"); 

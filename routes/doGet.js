@@ -26,7 +26,9 @@ function handleReserve(params) {
   tmpl.lineId = params.uid || "LINE_ID_None";
   tmpl.name = params.name || "name_None";
   tmpl.redirectUrl = ScriptApp.getService().getUrl();
-  return tmpl.evaluate().setTitle("個人情報入力");
+  res = tmpl.evaluate().setTitle("個人情報入力");
+  Logger.log(res.getContent())
+  return res
 }
 
 function handleHome(params) {
@@ -35,6 +37,8 @@ function handleHome(params) {
   tmpl.lineId = params.uid || "LINE_ID_None";
   tmpl.name = params.name || "name_None";
   tmpl.redirectUrl = ScriptApp.getService().getUrl();
-  return tmpl.evaluate().setTitle("日時選択");
+  res = tmpl.evaluate().setTitle("日時選択");
+  Logger.log(res.getContent())
+  return res
 }
 

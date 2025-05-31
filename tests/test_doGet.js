@@ -16,12 +16,13 @@ function test_doGet(path, uid, name) {
   const result = doGet(e);
   console.log(`path: ${path}`);
   console.log(JSON.stringify(result, null, 2));
+  return result.getContent()
 }
 
 function alltest() {
   // テスト実行例
-  test_doGet('profile', 'U001', 'プロフ太郎');
-  test_doGet('reserve', 'U002', '予約花子');
+  //test_doGet('profile', 'U001', 'プロフ太郎');
+  //test_doGet('reserve', 'U002', '予約花子');
   test_doGet('unknown', 'U003', '名無し三郎');
 }
 

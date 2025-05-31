@@ -13,6 +13,7 @@ function test_doGet(path, uid, name) {
       name: [name]
     }
   };
+  console.log(e)
   const result = doGet(e);
   console.log(`path: ${path}`);
   console.log(JSON.stringify(result, null, 2));

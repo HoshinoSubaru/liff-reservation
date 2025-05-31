@@ -1,59 +1,72 @@
 <script>
   // LIFF IDが変更になったら、5行目のLIFF IDも必ず更新する事
 
-// 親ページかiframeかを判定する
 if (typeof google === "undefined") window.google = {};
 if (!google.script) google.script = {};
 
-(() => {
-  const handlers = {
-    success: () => {},
-    failure: () => {}
-  };
+if (!google.script.run) {
+  (function () {
+    let handlers = {
+      success: null,
+      failure: null
+    };
 
-  const runProxy = new Proxy({}, {
-    get(_, functionName) {
-      return (...args) => {
-        console.log("[GAS呼び出し開始] 関数名:", functionName, "引数:", args);
+    const callFunction = (functionName, args) => {
+      console.log("[GAS呼び出し開始] 関数名:", functionName, "引数:", args);
 
-        fetch("/refasta_master/api/gas/call", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            function: functionName,
-            params: args
-          })
+      fetch("/refasta_master/api/gas/call", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          function: functionName,
+          params: args
         })
-          .then(res => {
-            console.log("[fetch応答受信] ステータス:", res.status);
-            return res.json();
-          })
-          .then(data => {
-            console.log("[GAS応答データ]", data);
-            if (handlers.success) handlers.success(data.result);
-          })
-          .catch(err => {
-            console.error("[GASエラー]", err);
-            if (handlers.failure) handlers.failure(err);
-          });
-      };
-    }
-  });
+      })
+        .then(res => {
+          console.log("[fetch応答受信] ステータス:", res.status);
+          return res.json();
+        })
+        .then(data => {
+          console.log("[GAS応答データ]", data);
+          if (typeof handlers.success === "function") handlers.success(data.result);
+          handlers.success = null;
+          handlers.failure = null;
+        })
+        .catch(err => {
+          console.error("[GASエラー]", err);
+          if (typeof handlers.failure === "function") handlers.failure(err);
+          handlers.success = null;
+          handlers.failure = null;
+        });
+    };
 
-  google.script.run = runProxy;
-  google.script.run.withSuccessHandler = (fn) => {
-    handlers.success = fn;
-    console.log("[SuccessHandler登録]");
-    return runProxy;
-  };
-  google.script.run.withFailureHandler = (fn) => {
-    handlers.failure = fn;
-    console.log("[FailureHandler登録]");
-    return runProxy;
-  };
-})();
+    const proxy = new Proxy({}, {
+      get(_, functionName) {
+        return (...args) => callFunction(functionName, args);
+      }
+    });
 
-
+    google.script.run = new Proxy(proxy, {
+      get(target, prop) {
+        if (prop === "withSuccessHandler") {
+          return (fn) => {
+            handlers.success = fn;
+            console.log("[SuccessHandler登録]");
+            return google.script.run;
+          };
+        }
+        if (prop === "withFailureHandler") {
+          return (fn) => {
+            handlers.failure = fn;
+            console.log("[FailureHandler登録]");
+            return google.script.run;
+          };
+        }
+        return target[prop]; // 関数呼び出し
+      }
+    });
+  })();
+}
 
 
 
@@ -125,6 +138,18 @@ if (window.top === window.self) {
     });
   }
   */
+  
+  const dummyProfile = {
+  userId: "U1234567890abcdef",
+  displayName: "テストユーザー",
+  pictureUrl: "https://example.com/profile.jpg",
+  statusMessage: "こんにちは！",
+  email: "test@example.com"
+};
+
+localStorage.setItem("liffProfile", JSON.stringify(dummyProfile));
+console.log("ダミーのLIFFプロフィールをlocalStorageに保存しました。");
+
     
   // 日付と時間を保管するための変数
   let selectedDate = "";
@@ -327,7 +352,7 @@ if (window.top === window.self) {
   // ③ 最後にリダイレクト
   let baseUrl = "<?= redirectUrl ?>";
   let lineId = "<?= lineId ?>";
-  const nextUrl = baseUrl + "?page=reserve_personal&line_id=" + lineId;
+  const nextUrl = baseUrl + "?parameter=reserve&line_id=" + lineId;
   window.top.location.href = nextUrl;
 }
 

@@ -6,7 +6,7 @@ const CALENDAR_ID = "s.hoshino@urlounge.co.jp";
 const defaultDate = "2025-03-25";  // テスト用日付
 const defaultTime = "17:00";       // テスト用時間
 
-let _LineID = ""
+let _LineID = "thisisnull"
 
 
 /***************************************
@@ -16,8 +16,10 @@ let _LineID = ""
 function include(filename) {
   Logger.log(filename)
   const tmpl = HtmlService.createTemplateFromFile(filename);
-  tmpl.lineId = _LineID
-  tmpl.redirectUrl = ScriptApp.getService().getUrl();
+  //LINEIDが空
+  //tmpl.lineId = _LineID
+  //tmpl.redirectUrl = ScriptApp.getService().getUrl();
+  tmpl.redirectUrl = "/refasta_master/home/reservation";
   return tmpl.evaluate().getContent();
 }
 

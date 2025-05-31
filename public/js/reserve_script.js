@@ -13,11 +13,11 @@ let _LineID = "thisisnull"
  * テンプレート内で
  * <?!= include("xxx") ?> を使うためのヘルパー
  ***************************************/
-function include(filename) {
+function include(filename,lineid="") {
   Logger.log(filename)
   const tmpl = HtmlService.createTemplateFromFile(filename);
   //LINEIDが空
-  //tmpl.lineId = _LineID
+  tmpl.lineId = lineid
   //tmpl.redirectUrl = ScriptApp.getService().getUrl();
   tmpl.redirectUrl = "/refasta_master/home/reservation";
   return tmpl.evaluate().getContent();

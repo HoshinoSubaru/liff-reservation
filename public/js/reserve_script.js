@@ -14,6 +14,7 @@ let _LineID = ""
  * <?!= include("xxx") ?> を使うためのヘルパー
  ***************************************/
 function include(filename) {
+  Logger.log(filename)
   const tmpl = HtmlService.createTemplateFromFile(filename);
   tmpl.lineId = _LineID
   tmpl.redirectUrl = ScriptApp.getService().getUrl();

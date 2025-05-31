@@ -1,3 +1,4 @@
+/*
 const functions = require("firebase-functions");
 const fetch = require("node-fetch");
 
@@ -19,3 +20,4 @@ exports.relayToGAS = functions.https.onRequest(async (req, res) => {
     res.status(500).send("GASへのリクエストに失敗しました");
   }
 });
+*/

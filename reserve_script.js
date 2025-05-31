@@ -7,83 +7,55 @@ const defaultDate = "2025-03-25";  // テスト用日付
 const defaultTime = "17:00";       // テスト用時間
 
 let _LineID = ""
-let _name = ""
-let _mode = ""
 
 /***************************************
  * ページ振り分け用
  ***************************************/
 function doGet(e) {
-  Logger.log("ScriptApp URL: %s", ScriptApp.getService().getUrl());
-  Logger.log("Raw event: %s", JSON.stringify(e));
-  Logger.log("Parameters: %s", JSON.stringify(e.parameter));
+  Logger.log("e.parameter: " + JSON.stringify(e.parameter));
+  const params = e.parameter;
+  const lineId = params.uid || "LINE_ID_None";  // ← iframeから来るパラメータ名に合わせた
+  const name = params.name || "name_None";
+  const mode = params.mode || "mode_None";
+  const page = params.page;
 
-  const page = e.parameter.page || "";
-  
-  // プロフィールデータの取得（line_idパラメータとliff.stateの両方をチェック）
-  if (e.parameter.line_id) {
-    _LineID = e.parameter.line_id;
-    _name = e.parameter.name || "name_None";
-    _mode = e.parameter.mode || "mode_None";
-  } else if (e.parameter["liff.state"]) {
-    try {
-      const rawState = e.parameter["liff.state"];
-      const decoded = decodeURIComponent(rawState);
-      const query = decoded.startsWith("?") ? decoded.substring(1) : decoded;
-      const paramMap = {};
-      query.split("&").forEach(kv => {
-        const [key, value] = kv.split("=");
-        paramMap[key] = decodeURIComponent(value || "");
-      });
-      _LineID = paramMap.userId || "LINE_ID_None";
-      _name = paramMap.name || "name_None";
-      _mode = paramMap.mode || "mode_None";
-    } catch (err) {
-      Logger.log("liff.state 解析エラー: %s", err.message);
-      _LineID = "LINE_ID_None";
-      _name = "name_None";
-      _mode = "mode_None";
-    }
-  } else {
-    _LineID = "LINE_ID_None";
-    _name = "name_None";
-    _mode = "mode_None";
+  Logger.log("✅ userId: " + lineId);
+  Logger.log("✅ name: " + name);
+  Logger.log("✅ mode: " + mode);
+  Logger.log("✅ page: " + page);
+
+  try {
+    testInsertEocLine(lineId);
+    sendChatMessage("GAS LINE IDの取得: " + lineId);
+  } catch (err) {
+    Logger.log("sendChatMessage エラー: " + err.message);
   }
 
-  Logger.log("Profile data - LINE ID: %s, Name: %s, Mode: %s", _LineID, _name, _mode);
+  let tmpl;
+  if (page === 'reserve_personal') {
+    tmpl = HtmlService.createTemplateFromFile("reserve_personal");
+  } else {
+    tmpl = HtmlService.createTemplateFromFile("reserve_date");
+  }
 
-  // テンプレートの作成と値の設定
-  const tmpl = HtmlService.createTemplateFromFile(page || "reserve_date");
-  tmpl.lineId = _LineID;
-  tmpl.name = _name;
-  tmpl.mode = _mode;
-
-  // リダイレクトURLの設定（必要な場合）
+  tmpl.lineId = lineId;
+  tmpl.name = name;
   tmpl.redirectUrl = ScriptApp.getService().getUrl();
 
-  return tmpl
-    .evaluate()
-    .setTitle("予約システム")
-    .addMetaTag("viewport", "width=device-width, initial-scale=1")
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  return tmpl.evaluate().setTitle(
+    page === 'reserve_personal' ? "個人情報入力" : "日時選択"
+  );
 }
+
 
 /***************************************
  * テンプレート内で
  * <?!= include("xxx") ?> を使うためのヘルパー
  ***************************************/
 function include(filename) {
-  Logger.log("✅ filename: " + filename);
-
-  Logger.log("✅ _LineID: " + _LineID);
-  Logger.log("✅ name: " + _name);
-  Logger.log("✅ mode: " + _mode);
   const tmpl = HtmlService.createTemplateFromFile(filename);
-  tmpl.lineId = _LineID;
-  tmpl.name = _name;
-
+  tmpl.lineId = _LineID
   tmpl.redirectUrl = ScriptApp.getService().getUrl();
-  Logger.log(tmpl)
   return tmpl.evaluate().getContent();
 }
 
@@ -111,32 +83,30 @@ function getEvents() {
     return [];
   }
 
-  // Filter and map events
-  return events.items
-    .filter(isNotAllDayEvent)
-    .map(formatEvent);
+  // 終日イベント(= dateTimeが無い)を除外
+  const results = events.items
+    .filter(ev => {
+      const isAllDay = !ev.start.dateTime && !ev.end.dateTime;
+      if (isAllDay) {
+        Logger.log(`終日イベントを除外: ${ev.summary}`);
+      }
+      return !isAllDay;
+    })
+    .map(ev => {
+      const start = ev.start.dateTime || ev.start.date;
+      const end = ev.end.dateTime || ev.end.date;
+      return {
+        id: ev.id,
+        summary: ev.summary || "無題のイベント",
+        start: start,
+        end: end
+      };
+    });
+
+  Logger.log("Filtered Events: %s", JSON.stringify(results, null, 2));
+  return results;
 }
 
-// Helper function to filter out all-day events
-function isNotAllDayEvent(event) {
-  const isAllDay = !event.start.dateTime && !event.end.dateTime;
-  if (isAllDay) {
-    Logger.log(`終日イベントを除外: ${event.summary}`);
-  }
-  return !isAllDay;
-}
-
-// Helper function to format event data
-function formatEvent(event) {
-  const start = event.start.dateTime || event.start.date;
-  const end = event.end.dateTime || event.end.date;
-  return {
-    id: event.id,
-    summary: event.summary || "無題のイベント",
-    start: start,
-    end: end
-  };
-}
 
 /***************************************
  * submitReservationToSheet: GSSへの転記処理
@@ -182,7 +152,7 @@ function submitReservationToSheet(reservationData) {
     Logger.log("Calendar Event created with ID: " + calendarEventId);
     sendLinePushNotification(reservationData, calendarEventId);
     return calendarEventId;
-
+    
   } catch (err) {
     Logger.log("Error details: " + err.message);
     Logger.log("Stack trace: " + err.stack);
@@ -209,8 +179,8 @@ function addCalendarEvent(reservationData) {
   // イベントオブジェクトの作成
   const eventObj = {
     summary: `${reservationData.purpose}：LINE予約：${displayName}さま`,
-    description:
-      `予約者名:${displayName}さま
+    description: 
+  `予約者名:${displayName}さま
   担当者希望: ${reservationData.staff || "未入力"}
   用途: ${reservationData.purpose || "なし"}
   来店回数: ${reservationData.usage || "未入力"}
@@ -234,7 +204,7 @@ function addCalendarEvent(reservationData) {
     Logger.log("Event created with ID: " + newEvent.id);
 
     // 招待するゲストリストの設定（主催者も含める場合）
-    let requiredGuests = ["subaru6363natuko@gmail.com", "s.hoshino@urlounge.co.jp"];
+    let requiredGuests = ["subaru6363natuko@gmail.com","s.hoshino@urlounge.co.jp"];
     requiredGuests.unshift(CALENDAR_ID);  // 主催者（カレンダーID）をゲストリストの先頭に追加
 
     Logger.log("招待するゲストリスト: " + requiredGuests.join(", "));
@@ -263,11 +233,11 @@ function sendLinePushNotification(reservationData, calendarEventId) {
   const { /*lineId,*/ time, /*lineName,*/ staff, purpose, usage } = reservationData;
 
   // 送信先: LIFFで取得したユーザーIDを利用
-  const to = _LineID;
-
-  // "time" を日付と時間に分割（例："2025-03-25 17:00"）
+  const to = "Ucaf9000a9c26b2f3c7183833f554cb2c";
+  
+// "time" を日付と時間に分割（例："2025-03-25 17:00"）
   const [reservationDate, reservationTime] = time.split(" ");
-
+ 
   // LINE Messaging API のエンドポイント
   const url = "https://api.line.me/v2/bot/message/push";
   // チャネルアクセストークン
@@ -282,12 +252,14 @@ function sendLinePushNotification(reservationData, calendarEventId) {
     "📅 ご予約内容\n" +
     "予約日: " + reservationDate + "\n" +
     "時間: " + reservationTime + "\n" +
-    "ご予約者名: " + _name + "\n" +
+    "ご予約者名: " + "Test" + "\n" +
     "用件: " + purpose + "\n" +
     "担当者: " + staff + "\n" +
     "ご利用回数: " + usage + "\n\n" +
+    "※ご予約キャンセルはスタッフが対応しております。\n" +
+    "お手数ですが、キャンセルの際はご一報くださいませ。\n\n" +
     "その他、お困りごとはございましたでしょうか。";
-
+    
   const payload = {
     to: to,
     messages: [
@@ -307,7 +279,7 @@ function sendLinePushNotification(reservationData, calendarEventId) {
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   };
-
+  
   // APIリクエスト実行
   const response = UrlFetchApp.fetch(url, options);
   Logger.log("LINE PUSH response: " + response.getContentText());

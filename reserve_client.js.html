@@ -1,34 +1,41 @@
 <script>
   // LIFF IDが変更になったら、5行目のLIFF IDも必ず更新する事
 
-  // 親ページかiframeかを判定する
-  if (window.top === window.self) {
-    // ----- 親ページの処理 -----
+// 親ページかiframeかを判定する
+if (window.top === window.self) {
+  function initLIFF() {
+    liff.init({ liffId: '1653447401-5bNBkyQB' })
+      .then(() => {
+        if (!liff.isLoggedIn()) {
+          alert("lineにログインしていません")
+          return liff.login({
+            scope: 'profile openid email chat_message.write',
+            //redirectUri: 'https://kinkaimasu.jp/toppage2.php'//'https://liff.line.me/1653447401-5bNBkyQB'
+          });
+        }
+      })
+      .then(() => liff.getProfile())
+      .then(profile => {
+        localStorage.setItem("liffProfile", JSON.stringify(profile));
+        console.log("プロフィール情報をローカルストレージに保存:", profile);
 
-    async function initLIFF() {
-      const _LineID = "<?= lineId ?>";  // _LineID → lineId に修正
-      const _name = "<?= name ?>";
-      const redirectUrl = "<?= redirectUrl ?>";
+        // ここでサーバー側の processLineProfile を呼び出します
+        google.script.run
+          .withSuccessHandler(function(result) {
+            console.log("サーバープロフィール処理結果:", result);
+          })
+          .withFailureHandler(function(err) {
+            console.error("サーバーエラー:", err);
+          })
+          .processLineProfile(profile);
+      })
+      .catch(err => console.error("LIFF init/profile error:", err));
+  }
+  initLIFF();
 
-      // profile オブジェクトを正しい形式で作成
-      const profile = { userId: _LineID, displayName: _name };
-
-      // サーバー側の processLineProfile を呼び出す
-      google.script.run
-        .withSuccessHandler(result => {
-          console.log("サーバープロフィール処理結果:", result);
-          // プロフィールをローカルストレージに保存
-          localStorage.setItem("liffProfile", JSON.stringify(profile));
-        })
-        .withFailureHandler(err => {
-          console.error("サーバーエラー:", err);
-        })
-        .processLineProfile(profile);  // オブジェクトとして渡す
-    }
-
-    // 子ページ（iframe）からプロフィール要求が来たら返答する
+  // 子ページ（iframe）からプロフィール要求が来たら返答する
     window.addEventListener("message", event => {
-      if (event.data?.requestProfile) {
+      if (event.data && event.data.requestProfile) {
         const raw = localStorage.getItem("liffProfile") || "{}";
         const profile = JSON.parse(raw);
         event.source.postMessage({ liffProfile: profile }, "*");
@@ -41,12 +48,12 @@
     // 親ページへプロフィールをリクエストするヘルパー
     function requestProfile() {
       return new Promise(resolve => {
-        const handler = event => {
-          if (event.data?.liffProfile) {
+        function handler(event) {
+          if (event.data && event.data.liffProfile) {
             window.removeEventListener("message", handler);
             resolve(event.data.liffProfile);
           }
-        };
+        }
         window.addEventListener("message", handler);
         window.top.postMessage({ requestProfile: true }, "*");
       });
@@ -54,7 +61,7 @@
 
     // 親ページから送られてきたプロフィール情報を受信して保存
     window.addEventListener("message", event => {
-      if (event.data?.liffProfile) {
+      if (event.data && event.data.liffProfile) {
         localStorage.setItem("liffProfile", JSON.stringify(event.data.liffProfile));
         console.log("iframe: 親からプロフィール情報を受信しました", event.data.liffProfile);
       }
@@ -66,7 +73,7 @@
   let selectedDate = "";
   let selectedTime = "";
   let eventsData = [];
-
+  
   // ページ読み込み時の初期処理
   document.addEventListener("DOMContentLoaded", () => {
     // サーバーからイベント情報を取得してカレンダーをセットアップ
@@ -74,66 +81,69 @@
   
     // 30分単位の時間ボタン生成
     generateTimeSlots();
-    setupButtonEvent("next-button", submitReservation);
+  
+    // 「次へ進む」ボタンのクリックイベント登録
+    const nextButton = document.getElementById("next-button");
+    if (nextButton) {
+      nextButton.addEventListener("click", submitReservation);
+    }
+
+    // 各 option ボタングループの初期化（setupOptionGroup は1回だけ定義）
     setupOptionGroup("purpose-buttons", "purpose");
     setupOptionGroup("staff-buttons", "staff");
     setupOptionGroup("usage-buttons", "usage");
   });
-
-  // ボタンイベント登録のヘルパー関数
-  function setupButtonEvent(buttonId, callback) {
-    const button = document.getElementById(buttonId);
-    if (button) button.addEventListener("click", callback);
-  }
-
+  
   /**
    * カレンダーの初期化処理 → 日付プルダウン用に変更
    */
   function setupCalendar(events) {
     eventsData = events;
     const availableDates = getNextTwoWeeksDates(events.map(e => e.start.split("T")[0]));
-    const calendarElem = document.getElementById("selectDate");
-
+    const calendarElem = document.getElementById("selectDate"); 
+  
     if (calendarElem) {
       const select = document.createElement("select");
       select.id = "date-select";
       select.innerHTML = '<option value="">選択してください</option>';
-
+  
       availableDates.forEach(date => {
         const option = document.createElement("option");
         option.value = date;
         option.textContent = formatJapaneseDate(date);
         select.appendChild(option);
       });
-
+  
       select.addEventListener("change", () => {
         selectedDate = select.value;
         selectedTime = "";
         updateSelectedDateTime();
         updateTimeButtonsAvailability();
       });
-
-      calendarElem.innerHTML = "";
+  
+      calendarElem.innerHTML = ""; 
       calendarElem.appendChild(select);
     }
   }
-
+  
   /**
    * 予約可能な2週間分の日付を取得（イベントに存在する日付の中から）
    */
   function getNextTwoWeeksDates(eventDates) {
     const today = new Date();
-    const twoWeeksLater = new Date(today);
+    const twoWeeksLater = new Date();
     twoWeeksLater.setDate(today.getDate() + 13);
-
-    return Array.from({ length: 14 }, (_, i) => {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      const yyyyMMdd = date.toISOString().split("T")[0];
-      return eventDates.includes(yyyyMMdd) ? yyyyMMdd : null;
-    }).filter(Boolean);
+  
+    const result = [];
+    for (let d = new Date(today); d <= twoWeeksLater; d.setDate(d.getDate() + 1)) {
+      const yyyyMMdd = d.toISOString().split("T")[0];
+      if (eventDates.includes(yyyyMMdd)) {
+        result.push(yyyyMMdd);
+      }
+    }
+    return result;
   }
-
+  
   /**
    * yyyy-mm-dd → yyyy年m月d日（日本語表記）に整形
    */
@@ -141,7 +151,7 @@
     const date = new Date(ymd);
     return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日 (${["日", "月", "火", "水", "木", "金", "土"][date.getDay()]})`;
   }
-
+  
   /**
    * 30分単位の時間ボタン生成
    */
@@ -149,132 +159,166 @@
     const container = document.getElementById("time-buttons");
     if (!container) return;
     container.innerHTML = "";
-
     for (let hour = 11; hour <= 18; hour++) {
       for (let minutes = 0; minutes < 60; minutes += 30) {
-        if (hour === 18 && minutes > 30) break;
+        if (hour == 18) {
+          if (minutes > 30) {
+            break;
+          }
+        }
+ 
         const time = `${hour.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}`;
-        const btn = createTimeButton(time);
+        const btn = document.createElement("button");
+        btn.textContent = time;
+        btn.classList.add("time-button", "disabled");
+        btn.disabled = true;
+        btn.onclick = () => {
+          if (btn.disabled) return;
+          selectedTime = time;
+          updateSelectedDateTime();
+        };
         container.appendChild(btn);
       }
     }
   }
-
-  // 時間ボタン生成のヘルパー関数
-  function createTimeButton(time) {
-    const btn = document.createElement("button");
-    btn.textContent = time;
-    btn.classList.add("time-button", "disabled");
-    btn.disabled = true;
-    btn.onclick = () => {
-      if (!btn.disabled) {
-        selectedTime = time;
-        updateSelectedDateTime();
-      }
-    };
-    return btn;
-  }
-
+  
   /**
    * 選択した日付と時間をテキストエリアに表示し、sessionStorageに保存
    */
   function updateSelectedDateTime() {
     const textArea = document.getElementById("selected-time");
     if (!textArea) return;
-    const combined = `${selectedDate} ${selectedTime}`;
+    let combined = selectedDate + " " + selectedTime;
     textArea.value = combined;
     sessionStorage.setItem("selectedDate", selectedDate);
     sessionStorage.setItem("selectedTime", combined);
-    console.log("selectedDate:", selectedDate, "selectedTime:", selectedTime, "Combined:", combined);
+    console.log("selectedDate:", selectedDate);
+    console.log("selectedTime:", selectedTime);
+    console.log("Combined:", combined);
   }
-
+  
   /**
    * 選択日付の空き状況に合わせ、時間ボタンの有効／無効を更新
    */
-  function updateTimeButtonsAvailability() {
-    if (!selectedDate) return;
-    const now = new Date();
-    const todayString = now.toISOString().split("T")[0];
-    const eventsOnSelectedDate = eventsData.filter(event => event.start.split("T")[0] === selectedDate);
+   function updateTimeButtonsAvailability() {
+  if (!selectedDate) return;
+  const now = new Date();
+  const todayString = now.toISOString().split("T")[0];
+  const eventsOnSelectedDate = eventsData.filter(event => event.start.split("T")[0] === selectedDate);
+  
+  // 各時間ボタンに対して処理を適用
+  const buttons = document.querySelectorAll(".time-button");
+  buttons.forEach(btn => {
+    btn.disabled = false;
+    btn.classList.remove("disabled");
+    const slotStart = new Date(selectedDate + "T" + btn.textContent + ":00");
 
-    document.querySelectorAll(".time-button").forEach(btn => {
-      const slotStart = new Date(`${selectedDate}T${btn.textContent}:00`);
-      const slotEnd = new Date(slotStart.getTime() + 30 * 60 * 1000);
-
-      btn.disabled = selectedDate === todayString && slotStart < now || eventsOnSelectedDate.some(event => {
-        const eventStart = new Date(event.start);
-        const eventEnd = new Date(event.end);
-        return eventEnd > slotStart && eventStart < slotEnd;
-      });
-
-      btn.classList.toggle("disabled", btn.disabled);
-    });
-  }
-
+    // 現時刻以前なら無効化する
+    if (selectedDate === todayString && slotStart < now) {
+      btn.disabled = true;
+      btn.classList.add("disabled");
+      return; 
+    }
+    
+    const slotEnd = new Date(slotStart.getTime() + 30 * 60 * 1000);
+    // 既存の予約重複チェック
+    for (let event of eventsOnSelectedDate) {
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+      if (eventEnd > slotStart && eventStart < slotEnd) {
+        btn.disabled = true;
+        btn.classList.add("disabled");
+        break;
+      }
+    }
+  });
+}
+  
+  
   /**
    * 「次へ進む」ボタン押下時の処理（個人情報入力ページへ遷移）
    */
-  function submitReservation() {
-    const _LineID = "<?= lineId ?>"; // 修正: _LineID → lineId
-    const _name = "<?= name ?>";
-    console.log("submitReservation - LINE ID:", _LineID, "Name:", _name);
+   function submitReservation() {
+  console.log("submitReservation called");
 
-    // 日付が選択されているかチェック
-    if (!selectedDate) {
-      alert("日付を選択してください");
-      return;
-    }
-    // 時間が選択されているかチェック
-    if (!selectedTime) {
-      alert("時間を選択してください");
-      return;
-    }
-
-    // 両方選択されている場合は連結して処理
-    const selectedText = `${selectedDate} ${selectedTime}`;
-    sessionStorage.setItem("selectedTime", selectedText);
-
-    // リダイレクト用URLの構築
-    const baseUrl = "<?= redirectUrl ?>";
-    const nextUrl = `${baseUrl}?page=reserve_personal&line_id=${encodeURIComponent(_LineID)}&name=${encodeURIComponent(_name)}`;
-    
-    // デバッグログ
-    console.log("Redirecting to:", nextUrl);
-    
-    // リダイレクト実行
-    window.top.location.href = nextUrl;
+  // 日付が選択されているかチェック
+  if (!selectedDate) {
+    alert("日付を選択してください");
+    return;
   }
+  // 時間が選択されているかチェック
+  if (!selectedTime) {
+    alert("時間を選択してください");
+    return;
+  }
+
+  // 両方選択されている場合は連結して処理
+  const selectedText = selectedDate + " " + selectedTime;
+
+  // 選択日時をセッションに保存
+  sessionStorage.setItem("selectedTime", selectedText);
+
+  // localStorage から LIFF プロフィールを取得
+  const raw = localStorage.getItem("liffProfile");
+  const profile = raw ? JSON.parse(raw) : {};
+
+  // メッセージ組み立て＆送信
+  const message =
+    "LIFFアプリ:redirect時:profile 処理開始\n" +
+    "LINE名: " + (profile.displayName || "") + "\n" +
+    "LINEID: " + (profile.userId || "") + "\n" +
+    "選択日時: " + selectedText;
+  google.script.run.sendChatMessage(message);
+  console.log("sendChatMessage called with:", message);
+
+  // ③ 最後にリダイレクト
+  let baseUrl = "<?= redirectUrl ?>";
+  let lineId = "<?= lineId ?>";
+  const nextUrl = baseUrl + "?page=reserve_personal&line_id=" + lineId;
+
+  window.top.location.href = nextUrl;
+}
+
 
   /**
    *  ボタンクリックで hidden に値をセットし、選択中のボタンをハイライト
   * 各グループ内で1つだけ選択状態にするための関数 */
   function setupOptionGroup(groupId, hiddenInputId) {
-    const groupContainer = document.getElementById(groupId);
-    const groupButtons = groupContainer.getElementsByClassName("option-button");
-    const hiddenInput = document.getElementById(hiddenInputId);
+  const groupContainer = document.getElementById(groupId);
+  const groupButtons = groupContainer.getElementsByClassName("option-button");
+  const hiddenInput = document.getElementById(hiddenInputId);
 
-    // HTMLCollection を配列に変換してループ
-    Array.from(groupButtons).forEach(button => {
-      button.addEventListener("click", () => {
-        Array.from(groupButtons).forEach(btn => btn.classList.remove("selected"));
-        button.classList.add("selected");
-        hiddenInput.value = button.dataset.value;
-      });
+  // HTMLCollection を配列に変換してループ
+  Array.from(groupButtons).forEach(button => {
+    button.addEventListener("click", () => {
+      Array.from(groupButtons).forEach(btn => btn.classList.remove("selected"));
+      button.classList.add("selected");
+      hiddenInput.value = button.dataset.value;
     });
-  }
+  });
+}
 
   /**
    * フォーム送信処理
    */
   function submitPersonalInfo() {
-    let storedTime = sessionStorage.getItem("selectedTime");
+     let storedTime = sessionStorage.getItem("selectedTime");
     if (!storedTime || !storedTime.trim()) {
       storedTime = "2025-03-25 17:00";  // テスト用デフォルト日時
     }
 
-    // プロフィール情報の取得（サーバーから渡された値を優先）
-    const lineId = "<?= lineId ?>";  // 修正: _LineID → lineId
-    const name = "<?= name ?>";
+      // localStorageからプロフィール情報を取得
+    let profile = localStorage.getItem("liffProfile");
+    if (profile) {
+      profile = JSON.parse(profile);
+    } else {
+      profile = { displayName: "None", userId: "None" };
+    }
+
+    let message = "LIFFアプリ:予約登録時:profile 処理開始\n" +
+                  "LINE名: " + profile.displayName + "\n" +
+                  "LINEID: " + profile.userId;
+    google.script.run.sendChatMessage(message);
 
     const personalData = {
       time: storedTime,
@@ -282,44 +326,32 @@
       purpose: document.getElementById("purpose").value,
       staff: document.getElementById("staff").value,
       usage: document.getElementById("usage").value,
-      lineName: name,
-      lineId: lineId
+      lineName: profile ? profile.displayName : "",
+      lineId: profile ? profile.userId : ""
     };
-
-    console.log("submitPersonalInfo - Profile data:", { lineId, name });
-    console.log("submitPersonalInfo - Form data:", personalData);
-
-    // 必須項目の検証
-    const missingFields = Object.keys(personalData).filter(key => 
-      (key !== 'time' && key !== 'date') && !personalData[key]
-    );
+  
+    console.log("submitPersonalInfo called", personalData);
+  
+    let missingFields = [];
+    for (let key in personalData) {
+      if ((key !== 'time' && key !== 'date') && !personalData[key]) {
+        missingFields.push(key);
+      }
+    }
     if (missingFields.length > 0) {
       alert("以下の項目が未入力です: " + missingFields.join(", "));
       return;
     }
-
-    // サーバーにデータを送信
+  
+    console.log("Sending data to server...");
+      
     google.script.run
-      .withSuccessHandler(() => {
-        alert("予約が完了しました！\nこのあとLINEメッセージにて、ご予約内容をお送りいたします。");
-      })
-      .withFailureHandler(err => {
+    .withSuccessHandler(function(eventId) {
+    alert("予約が完了しました！\nこのあとLINEメッセージにて、ご予約内容をお送りいたします。");
+  })
+      .withFailureHandler(function(err) {
         alert("エラーが発生しました\nお手数ですが再度ご予約をお試しいただくか、当店までお問い合わせください。 " + err.message);
       })
       .submitReservationToSheet(personalData);
   }
-
-  async function requestSMS() {
-    const phone = document.getElementById('phone').value;
-    const res = await fetch(GAS_URL + '?action=send', {
-      method: 'POST',
-      body: JSON.stringify({ phone }),
-      headers: { 'Content-Type': 'application/json' }
-    });
-    const json = await res.json();
-    alert(json.message);
-    if (json.success) document.getElementById('verifySection').style.display = 'block';
-  }
-
-  
 </script>

@@ -1,70 +1,105 @@
 <!DOCTYPE html>
 <html lang="ja">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>予約テスト</title>
+  <title>LIFF + GAS iframe</title>
   <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background-color: #f7f7f7;
+      font-size: 18px;
+    }
+    h1 {
+      font-size: 24px;
+      text-align: center;
+    }
+    button {
+      display: block;
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+      background-color: #06c755;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+    #profile {
+      margin-top: 30px;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    img {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      margin-top: 10px;
+    }
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+      margin-top: 30px;
+      display: none; /* 最初は非表示 */
+    }
+  </style>
 </head>
+<body>
+  <h1>LIFFプロフィール</h1>
+  <button onclick="getUserProfile()">プロフィール取得</button>
 
-<body style="display: none;">
+  <div id="profile" style="display:none;">
+    <p><strong>名前:</strong> <span id="displayName"></span></p>
+    <p><strong>User ID:</strong> <span id="userId"></span></p>
+    <img id="pictureUrl" src="" alt="プロフィール画像">
+  </div>
+
+  <iframe id="gasFrame" src=""></iframe>
+
   <script>
-  async function main() {
-    await liff.init({ liffId: "1653447401-q2p5DXw5" });
-    if (!liff.isLoggedIn())
-     { liff.login();
-       return; }
-
-    const profile = await liff.getProfile();
-    console.log("取得したプロフィール情報:", profile); // ログを追加
-
-    // ① state 用のクエリ文字列を自前で組み立て
-    const rawState = `?userId=${encodeURIComponent(profile.userId)}&name=${encodeURIComponent(profile.displayName)}&mode=edit`;
-    const encodedState = encodeURIComponent(rawState);
-
-    // ② liff.state にまとめて付与
-    const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
-    const targetUrl = `${baseLiffUrl}?liff.state=${encodedState}`;
-
-    window.location.href = targetUrl;
-  }
-  main();
-
-
-  /**
     async function main() {
-      await liff.init({ liffId: "1653447401-q2p5DXw5" });
+      await liff.init({ liffId: "1653447401-q2p5DXw5" }); // ← あなたのLIFF IDに変更！
 
       if (!liff.isLoggedIn()) {
-        liff.login();
+        liff.login({ redirectUri: location.href });
         return;
       }
+    }
 
+    async function getUserProfile() {
       const profile = await liff.getProfile();
-      console.log("取得したプロフィール情報:", profile); // ログを追加
 
       // プロフィール表示
-      document.getElementById('displayname').textContent = profile.displayName;
+      document.getElementById('displayName').textContent = profile.displayName;
       document.getElementById('userId').textContent = profile.userId;
       document.getElementById('pictureUrl').src = profile.pictureUrl;
       document.getElementById('profile').style.display = 'block';
 
-       // パラメータを動的に付与してLIFF URLにリダイレクト
-      const baseLiffUrl = "https://liff.line.me/1653447401-5bNBkyQB";
-      const params = new URLSearchParams({
-        userId: profile.userId,
+    // Firebaseへ送信 → GASのHTMLを受け取ってそのまま表示
+    const response = await fetch("https://us-central1-xxxx.cloudfunctions.net/relayToGAS", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uid: profile.userId,
         name: profile.displayName,
-        mode: "edit"
-      });
+        page: "reserve_personal"
+      })
+    });
 
-      const targetUrl = `${baseLiffUrl}?${params.toString()}`;
-      window.location.href = targetUrl;
-    }
+    const html = await response.text();
+    document.open();
+    document.write(html);
+    document.close();
+  }
 
-    main();
-    */
+  main();
   </script>
 </body>
-
 </html>
